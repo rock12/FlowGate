@@ -4963,9 +4963,9 @@ function applyUiStateToStore(uiState) {
 }
 
 // src/forkop/services/runtimeUiState.service.ts
-var RUNTIME_UI_STATE_REFRESH_MIN_INTERVAL_MS = 500;
-var RUNTIME_UI_STATE_IDLE_POLL_INTERVAL_MS = 3e3;
-var RUNTIME_UI_STATE_ACTIVE_POLL_INTERVAL_MS = 500;
+var RUNTIME_UI_STATE_REFRESH_MIN_INTERVAL_MS = 1000;
+var RUNTIME_UI_STATE_IDLE_POLL_INTERVAL_MS = 15e3;
+var RUNTIME_UI_STATE_ACTIVE_POLL_INTERVAL_MS = 1500;
 var runtimeUiStateRefreshPromise = null;
 var lastRuntimeUiStateRefreshAt = 0;
 var lastRuntimeUiState;
@@ -4987,6 +4987,9 @@ function getNextPollDelay() {
 }
 function scheduleRuntimeUiStatePoll(delay = getNextPollDelay()) {
   if (!runtimeStatePollingStarted || runtimeStatePollTimer || typeof window === "undefined") {
+    return;
+  }
+  if (!isDocumentVisible()) {
     return;
   }
   runtimeStatePollTimer = window.setTimeout(() => {

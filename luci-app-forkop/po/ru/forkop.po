@@ -2368,3 +2368,36 @@ msgstr "Сгенерировано!"
 
 msgid "Generating…"
 msgstr "Генерация…"
+
+msgid "Local Address"
+msgstr "Локальный IP-адрес"
+
+msgid "Private Key"
+msgstr "Приватный ключ"
+
+msgid "Peer Public Key"
+msgstr "Публичный ключ узла (Peer)"
+
+msgid "Server Address"
+msgstr "Адрес сервера (Endpoint)"
+
+msgid "Server Port"
+msgstr "Порт сервера"
+
+msgid "Preshared Key"
+msgstr "Ключ Pre-Shared Key (PSK)"
+
+msgid "Persistent Keepalive"
+msgstr "Интервал Persistent Keepalive"
+
+msgid "VPS Server Command Generator"
+msgstr "Генератор команды сервера для VPS"
+
+msgid "Launch command for remote VPS:"
+msgstr "Команда запуска для удаленного VPS:"
+
+msgid "Copy Docker Command"
+msgstr "Скопировать команду Docker"
+
+msgid "Copied!"
+msgstr "Скопировано!"

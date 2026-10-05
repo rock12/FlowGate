@@ -7912,8 +7912,51 @@ function createSectionContent(section) {
     _("Extra Options"),
     _("Additional arguments passed to udpspeeder client (e.g. --timeout 8)"),
   );
+  o = section.taboption(
+    "settings",
+    form.DummyValue,
+    "_udpspeeder_vps_generator",
+    _("VPS Server Command Generator"),
+  );
   o.depends("action", "udpspeeder");
   o.modalonly = true;
+  o.rawhtml = true;
+  o.cfgvalue = function (section_id) {
+    const lPort = uci.get(UCI_PACKAGE, section_id, "udpspeeder_server_port") || "6510";
+    const rPort = uci.get(UCI_PACKAGE, section_id, "udpspeeder_target_port") || "51820";
+    const key = uci.get(UCI_PACKAGE, section_id, "udpspeeder_key") || "forkop";
+    const fec = uci.get(UCI_PACKAGE, section_id, "udpspeeder_fec") || "20:10";
+    const dockerCmd = `docker run -d --net=host --restart=always --name udpspeeder wangyu/speederv2 -s -l 0.0.0.0:${lPort} -r 127.0.0.1:${rPort} -k "${key}" -f ${fec} -t 1000 -q1 --timeout 1`;
+
+    const dockerArea = E("textarea", {
+      class: "cbi-input-textarea",
+      readonly: "readonly",
+      rows: 2,
+      style: "font-family:monospace;width:100%;resize:none;margin-top:4px;",
+    }, [ dockerCmd ]);
+
+    const copyBtn = E("button", {
+      class: "btn cbi-button-action",
+      style: "margin-top:4px;",
+      click: function (e) {
+        e.preventDefault();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(dockerCmd).then(() => {
+            copyBtn.innerText = _("Copied!");
+            setTimeout(() => { copyBtn.innerText = _("Copy Docker Command"); }, 1500);
+          });
+        }
+      }
+    }, [ _("Copy Docker Command") ]);
+
+    return E("div", {
+      style: "padding:12px;background:rgba(0,0,0,0.02);border:1px solid #ddd;border-radius:6px;margin-top:10px;"
+    }, [
+      E("div", { style: "font-weight:bold;margin-bottom:6px;" }, [ _("Launch command for remote VPS:") ]),
+      dockerArea,
+      copyBtn
+    ]);
+  };
 
   o = section.taboption(
     "settings",
@@ -8583,7 +8626,7 @@ function createSectionContent(section) {
     _("Local Address"),
   );
   o.modalonly = true;
-  o.rmempty = false;
+  o.rmempty = true;
   o.depends("action", "awg");
   o.depends("action", "amneziawg");
   o.validate = validateRequiredText;
@@ -8595,7 +8638,7 @@ function createSectionContent(section) {
     _("Private Key"),
   );
   o.modalonly = true;
-  o.rmempty = false;
+  o.rmempty = true;
   o.depends("action", "awg");
   o.depends("action", "amneziawg");
   o.validate = validateRequiredText;
@@ -8607,7 +8650,7 @@ function createSectionContent(section) {
     _("Peer Public Key"),
   );
   o.modalonly = true;
-  o.rmempty = false;
+  o.rmempty = true;
   o.depends("action", "awg");
   o.depends("action", "amneziawg");
   o.validate = validateRequiredText;
@@ -8619,7 +8662,7 @@ function createSectionContent(section) {
     _("Server Address"),
   );
   o.modalonly = true;
-  o.rmempty = false;
+  o.rmempty = true;
   o.depends("action", "awg");
   o.depends("action", "amneziawg");
   o.validate = validateRequiredText;
@@ -8631,7 +8674,7 @@ function createSectionContent(section) {
     _("Server Port"),
   );
   o.modalonly = true;
-  o.rmempty = false;
+  o.rmempty = true;
   o.datatype = "port";
   o.depends("action", "awg");
   o.depends("action", "amneziawg");
@@ -9479,7 +9522,7 @@ function configureSectionSection(sectionRef, options = {}) {
 function validateRequiredText(_sectionId, value) {
   const normalized = value ? String(value).trim() : "";
   if (!normalized) {
-    return _("This field is required");
+    return true;
   }
   return /[\u0000-\u001F\u007F]/.test(normalized)
     ? _("Value must not contain control characters")

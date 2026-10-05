@@ -1,5 +1,6 @@
 #!/usr/bin/env ucode
 
+let fs = require("fs");
 let constants = require("core.constants");
 let validator_module = null;
 
@@ -9,6 +10,14 @@ function validator() {
     if (validator_module == null)
         validator_module = require("providers.zapret2.validator");
     return validator_module;
+}
+
+function resolve_lua_init(dir, name) {
+    if (fs.stat(dir + "/" + name) != null)
+        return "@" + dir + "/" + name;
+    if (fs.stat(dir + "/" + name + ".gz") != null)
+        return "@" + dir + "/" + name + ".gz";
+    return "@" + dir + "/" + name;
 }
 
 function config(ctx) {
@@ -55,9 +64,9 @@ function config(ctx) {
         check_prefix: "zapret2",
         base_args: [
             "--fwmark=" + desync_mark,
-            "--lua-init=@" + provider_lua_dir + "/zapret-lib.lua",
-            "--lua-init=@" + provider_lua_dir + "/zapret-antidpi.lua",
-            "--lua-init=@" + provider_lua_dir + "/zapret-auto.lua"
+            "--lua-init=" + resolve_lua_init(provider_lua_dir, "zapret-lib.lua"),
+            "--lua-init=" + resolve_lua_init(provider_lua_dir, "zapret-antidpi.lua"),
+            "--lua-init=" + resolve_lua_init(provider_lua_dir, "zapret-auto.lua")
         ]
     };
 }

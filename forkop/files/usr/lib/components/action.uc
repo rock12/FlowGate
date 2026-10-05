@@ -853,7 +853,48 @@ function resolve_zapret_release(arch) {
     };
 }
 
+function bolvan_zapret2_arch(candidates) {
+    let list = split(as_string(candidates), /[ \t\r\n]+/);
+    for (let c in list) {
+        c = lc(c);
+        if (index(c, "aarch64") >= 0 || index(c, "arm64") >= 0) return "linux-arm64";
+        if (index(c, "x86_64") >= 0 || index(c, "amd64") >= 0) return "linux-x86_64";
+        if (index(c, "x86") >= 0 || index(c, "i386") >= 0) return "linux-x86";
+        if (index(c, "mipsel") >= 0 || index(c, "mipsle") >= 0) return "linux-mipsel";
+        if (index(c, "mips64") >= 0) return "linux-mips64";
+        if (index(c, "mips") >= 0) return "linux-mips";
+        if (index(c, "arm") >= 0) return "linux-arm";
+        if (index(c, "riscv64") >= 0) return "linux-riscv64";
+        if (index(c, "ppc") >= 0 || index(c, "powerpc") >= 0) return "linux-ppc";
+    }
+    return "";
+}
+
 function resolve_zapret2_release(arch) {
+    let bolvan_arch = bolvan_zapret2_arch(arch.candidates);
+    if (bolvan_arch != "") {
+        let release_json = fetch_github_release_json("bol-van", "zapret2");
+        if (release_json != "") {
+            let rel = json(release_json);
+            if (rel && rel.assets) {
+                for (let asset in rel.assets) {
+                    let aname = as_string(asset.name || "");
+                    if (match(aname, /-openwrt-embedded\.tar\.gz$/) != null) {
+                        let version = replace(as_string(rel.tag_name || ""), /^v/, "");
+                        return {
+                            source: "bol-van",
+                            arch: bolvan_arch,
+                            bundle_name: aname,
+                            bundle_url: as_string(asset.browser_download_url || ""),
+                            release_url: as_string(rel.html_url || "https://github.com/bol-van/zapret2/releases"),
+                            version
+                        };
+                    }
+                }
+            }
+        }
+    }
+
     let releases_json = fetch_github_releases_json("remittor", "zapret-openwrt", "30");
     if (releases_json == "")
         return null;
@@ -865,6 +906,7 @@ function resolve_zapret2_release(arch) {
     if (version == "")
         version = trim(helper_output("string-remove-suffix", [ fields[1], ".zip" ]));
     return {
+        source: "remittor",
         arch: fields[0],
         bundle_name: fields[1],
         bundle_url: fields[2],
@@ -936,12 +978,24 @@ function download_byedpi_package(release) {
     };
 }
 
+function ensure_safe_init_stop(init_path) {
+    init_path = as_string(init_path);
+    if (!file_exists(init_path))
+        return;
+    let content = read_file(init_path);
+    if (content == null || index(content, "stop_service()") >= 0 || index(content, "stop()") >= 0)
+        return;
+    let fix = "\nstop_service() {\n\t[ \"$INIT_APPLY_FW\" != \"1\" ] || {\n\t\tlinux_fwtype\n\t\topenwrt_fw3_integration || stop_fw >/dev/null 2>&1 || true\n\t}\n\treturn 0\n}\n";
+    write_file(init_path, content + fix);
+}
+
 function disable_standalone_service(name) {
     let init = "/etc/init.d/" + as_string(name);
     if (!file_exists(init))
         return;
-    run_logged("Stopping standalone " + as_string(name) + " service", command_from_args([ init, "stop" ]));
-    run_logged("Disabling standalone " + as_string(name) + " autostart", command_from_args([ init, "disable" ]));
+    ensure_safe_init_stop(init);
+    run_logged("Stopping standalone " + as_string(name) + " service", "sh -c " + shell_quote(init + " stop >/dev/null 2>&1 || true"));
+    run_logged("Disabling standalone " + as_string(name) + " autostart", "sh -c " + shell_quote(init + " disable >/dev/null 2>&1 || true"));
 }
 
 function provider_installed(runtime_module) {
@@ -971,6 +1025,59 @@ function install_zapret_like(component, action, runtime_module, resolve_fn, labe
         if (!installed)
             action_fail(component, action, label + " is not installed", current_version, release.version, "", release.release_url || "");
         check_success_compared(component, current_version, release.version, normalize_zapret_version(current_version), normalize_zapret_version(release.version), release.release_url || "");
+    }
+
+    if (release.source == "bol-van") {
+        let bundle_file = tmp_dir + "/" + release.bundle_name;
+        if (!download_with_retry(release.bundle_url, bundle_file, release.bundle_name))
+            action_fail(component, action, "Failed to download " + label + " archive", current_version, release.version, "", release.release_url || "");
+
+        let extract_dir = tmp_dir + "/zapret2_extract";
+        ensure_dir(extract_dir);
+        if (!run_logged("Unpacking " + label + " archive", command_from_args([ "tar", "-xzf", bundle_file, "-C", extract_dir ])))
+            action_fail(component, action, "Failed to unpack " + label + " archive", current_version, release.version, "", release.release_url || "");
+
+        let top_dir = "";
+        for (let entry in fs.glob(extract_dir + "/zapret2*")) {
+            if (fs.stat(entry) != null) {
+                top_dir = entry;
+                break;
+            }
+        }
+        if (top_dir == "")
+            top_dir = extract_dir;
+
+        let binary_src = top_dir + "/binaries/" + release.arch + "/nfqws2";
+        if (!file_exists(binary_src))
+            action_fail(component, action, "Binary nfqws2 for " + release.arch + " not found in archive", current_version, release.version, "", release.release_url || "");
+
+        ensure_dir("/opt/zapret2/nfq2");
+        ensure_dir("/opt/zapret2/lua");
+        ensure_dir("/opt/zapret2/files");
+        ensure_dir("/opt/zapret2/ipset");
+
+        run_logged("Installing nfqws2 binary", command_from_args([ "cp", "-f", binary_src, "/opt/zapret2/nfq2/nfqws2" ]) + " && chmod 755 /opt/zapret2/nfq2/nfqws2");
+        if (file_exists(top_dir + "/binaries/" + release.arch + "/ip2net"))
+            command_success_from_args([ "cp", "-f", top_dir + "/binaries/" + release.arch + "/ip2net", "/opt/zapret2/ip2net" ]);
+        if (file_exists(top_dir + "/binaries/" + release.arch + "/mdig"))
+            command_success_from_args([ "cp", "-f", top_dir + "/binaries/" + release.arch + "/mdig", "/opt/zapret2/mdig" ]);
+
+        if (fs.stat(top_dir + "/lua") != null) {
+            command_success_from_args([ "sh", "-c", "cp -rf " + shell_quote(top_dir + "/lua") + "/* /opt/zapret2/lua/ 2>/dev/null || true" ]);
+            command_success_from_args([ "sh", "-c", "gzip -dk /opt/zapret2/lua/*.gz 2>/dev/null || true" ]);
+        }
+        if (fs.stat(top_dir + "/files") != null)
+            command_success_from_args([ "sh", "-c", "cp -rf " + shell_quote(top_dir + "/files") + "/* /opt/zapret2/files/ 2>/dev/null || true" ]);
+        if (fs.stat(top_dir + "/ipset") != null)
+            command_success_from_args([ "sh", "-c", "cp -rf " + shell_quote(top_dir + "/ipset") + "/* /opt/zapret2/ipset/ 2>/dev/null || true" ]);
+
+        disable_standalone_service(component);
+        restart_forkop_after_successful_change();
+        clear_version_caches();
+        current_version = provider_package_version(runtime_module);
+        if (current_version == "")
+            current_version = release.version;
+        action_success(component, action, label + " has been installed", current_version, release.version, 1, "latest", release.release_url || "");
     }
 
     if (!ensure_package_tool("unzip", "unzip", component, action))
@@ -1038,8 +1145,17 @@ function install_byedpi(action) {
 
 function remove_optional_component(component, package_name, label, runtime_module) {
     if (!pkg_is_installed(package_name)) {
-        if (provider_installed(runtime_module))
+        if (provider_installed(runtime_module)) {
+            if (component == "zapret2") {
+                let current_version = provider_package_version(runtime_module);
+                run_logged("Removing " + label + " provider files", command_from_args([ "rm", "-rf", "/opt/zapret2" ]));
+                clear_version_caches();
+                restart_forkop_after_successful_change();
+                action_success(component, "remove", label + " has been removed", current_version, "", 1);
+                return;
+            }
             action_fail(component, "remove", label + " exists outside the package manager and was not removed automatically");
+        }
         action_success(component, "remove", label + " is already removed", "", "", 0);
     }
 

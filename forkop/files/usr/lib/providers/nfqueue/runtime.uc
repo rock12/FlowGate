@@ -210,13 +210,18 @@ function first_line_version_field(value) {
     if (match(line, /^.*version[ \t]*/) == null)
         return "";
     let fields = split(trim(replace(line, /^.*version[ \t]*/, "")), /[ \t\r\n]+/);
-    return length(fields) > 0 ? as_string(fields[0]) : "";
+    let v = length(fields) > 0 ? as_string(fields[0]) : "";
+    if (substr(v, 0, 1) == "v")
+        v = substr(v, 1);
+    return v;
 }
 
 function package_version(cfg) {
-    let version = package_version_from_manager(cfg);
-    if (version == "" && provider_available(cfg))
+    let version = "";
+    if (provider_available(cfg))
         version = first_line_version_field(command_output_from_args([ cfg.provider_bin, "--version" ]));
+    if (version == "")
+        version = package_version_from_manager(cfg);
     return version;
 }
 
@@ -463,6 +468,11 @@ function start_runtime(cfg) {
     let sections = enabled_sections(cfg);
     if (length(sections) == 0 || !provider_available(cfg))
         return;
+
+    if (standalone_service_running(cfg)) {
+        log_message("Stopping conflicting standalone " + cfg.status_label + " service", "info");
+        command_success_from_args([ "sh", "-c", cfg.service_init + " stop >/dev/null 2>&1 || true" ]);
+    }
 
     cleanup_legacy_runtime(cfg);
     if (!ensure_runtime_dirs(cfg)) {

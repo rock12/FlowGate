@@ -339,11 +339,20 @@ function updates_bundle_version(bundle_name, prefixes) {
             continue;
 
         let rest = substr(name, length(prefix));
-        let separator = index(rest, "_");
-        if (separator <= 0)
+        let sep_score = -1;
+        let sep_und = index(rest, "_");
+        let sep_hyp = index(rest, "-");
+        if (sep_und > 0 && sep_hyp > 0)
+            sep_score = sep_und < sep_hyp ? sep_und : sep_hyp;
+        else if (sep_und > 0)
+            sep_score = sep_und;
+        else if (sep_hyp > 0)
+            sep_score = sep_hyp;
+
+        if (sep_score <= 0)
             continue;
 
-        let version = substr(rest, 0, separator);
+        let version = substr(rest, 0, sep_score);
         if (str_startswith(version, "v"))
             version = substr(version, 1);
 
@@ -355,11 +364,11 @@ function updates_bundle_version(bundle_name, prefixes) {
 }
 
 function updates_zapret_bundle_version(bundle_name) {
-    updates_bundle_version(bundle_name, ["zapret_v", "zapret_"]);
+    updates_bundle_version(bundle_name, ["zapret_v", "zapret-v", "zapret_", "zapret-"]);
 }
 
 function updates_zapret2_bundle_version(bundle_name) {
-    updates_bundle_version(bundle_name, ["zapret2_v", "zapret2_", "zapret_v", "zapret_"]);
+    updates_bundle_version(bundle_name, ["zapret2_v", "zapret2-v", "zapret2_", "zapret2-", "zapret_v", "zapret-v", "zapret_", "zapret-"]);
 }
 
 function first_version_token(value) {
