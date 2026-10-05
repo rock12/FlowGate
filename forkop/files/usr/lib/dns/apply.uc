@@ -234,14 +234,6 @@ function dnsmasq_restore_default_instance() {
         restore_dnsmasq_config_option("rebind_protection", "forkop_rebind_protection", "");
     else if (managed_global_dns)
         uci_set("dhcp.@dnsmasq[0].rebind_protection", "1");
-
-    // Ensure internet works when Forkop is stopped: if no upstream servers remain, allow ISP resolv and provide fallbacks
-    let remaining_servers = uci_get("dhcp.@dnsmasq[0].server");
-    if (remaining_servers == "" || remaining_servers == null) {
-        uci_set("dhcp.@dnsmasq[0].noresolv", "0");
-        uci_add_list("dhcp.@dnsmasq[0].server", "1.1.1.1");
-        uci_add_list("dhcp.@dnsmasq[0].server", "8.8.8.8");
-    }
 }
 
 function dnsmasq_configure(force) {
