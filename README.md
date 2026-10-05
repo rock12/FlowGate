@@ -138,12 +138,14 @@ rm -f /tmp/luci-indexcache* /var/luci-indexcache*
 <details>
 <summary><b>3. Как удалить FlowGate с роутера?</b></summary>
 
-Для полного удаления выполните по SSH:
+Для безопасного и чистого удаления со сбросом правил фаервола, восстановлением стандартного DNS и сохранением резервной копии конфигурации выполните по SSH одну команду:
+
 ```sh
-opkg remove luci-i18n-forkop-ru luci-app-forkop forkop 2>/dev/null || \
-apk del luci-i18n-forkop-ru luci-app-forkop forkop 2>/dev/null
+sh <(wget -O - https://raw.githubusercontent.com/rock12/forkop/main/uninstall.sh)
 ```
-Все стандартные настройки сети вернутся в исходное состояние.
+*(или через curl: `sh <(curl -fsSL https://raw.githubusercontent.com/rock12/forkop/main/uninstall.sh)`)*
+
+Скрипт аккуратно остановит службы, сбросит таблицы nftables, вернет стандартные настройки DNS dnsmasq и удалит пакеты. Если нужно удалить абсолютно всё без сохранения бэкапов конфигурации, добавьте ключ `--purge`.
 </details>
 
 ---
