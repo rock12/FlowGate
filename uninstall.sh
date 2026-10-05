@@ -12,7 +12,7 @@ UNINSTALLER_VERSION="1.1.4"
 # ─── TUI helpers & Color detection ───────────────────────────────────────────
 ESC="$(printf '\033')"
 _tui_colors=0
-if [ -t 1] 2>/dev/null; then
+if [ -t 1 ] 2>/dev/null; then
     case "${TERM:-dumb}" in
         dumb) _tui_colors=0 ;;
         *)    _tui_colors=1 ;;
