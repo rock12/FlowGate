@@ -1535,7 +1535,7 @@ ensure_bootstrap_ucode_runtime() {
     ensure_bootstrap_package "ucode-mod-uci"
 
     msg "Ensuring all required system dependencies and kernel modules are installed..."
-    for dep in ca-bundle curl bind-dig coreutils-base64 ip-full nftables kmod-tun kmod-nft-tproxy kmod-nft-nat kmod-inet-diag kmod-netlink-diag; do
+    for dep in ca-bundle curl bind-dig coreutils-base64 ip-full nftables traceroute iputils-ping kmod-tun kmod-nft-tproxy kmod-nft-nat kmod-inet-diag kmod-netlink-diag; do
         if ! pkg_is_installed "$dep"; then
             msg "Installing dependency: $dep"
             pkg_install_name "$dep" || warn "Package $dep might be built-in or not in feed"
@@ -1547,6 +1547,33 @@ ensure_bootstrap_ucode_runtime() {
             pkg_install_name "$opt_dep" >/dev/null 2>&1 || true
         fi
     done
+
+    if ! command_exists "udpspeeder" && ! command_exists "speederv2"; then
+        msg "Installing UDPspeeder binary (speederv2)..."
+        ARCH="$(uname -m 2>/dev/null || true)"
+        BIN_NAME=""
+        case "$ARCH" in
+            aarch64*|arm64*) BIN_NAME="speederv2_arm" ;;
+            armv7*|armv6*|arm*) BIN_NAME="speederv2_arm" ;;
+            x86_64*|amd64*) BIN_NAME="speederv2_amd64" ;;
+            mips*le*) BIN_NAME="speederv2_mips24kc_le" ;;
+            mips*) BIN_NAME="speederv2_mips24kc_be" ;;
+            *) BIN_NAME="speederv2_arm" ;;
+        esac
+
+        TMP_SPEEDER="$(mktemp -d /tmp/udpspeeder.XXXXXX 2>/dev/null || echo /tmp)"
+        SPEEDER_URL="https://github.com/wangyu-/UDPspeeder/releases/download/20230206.0/speederv2_binaries.tar.gz"
+        if curl -sSL -k "$SPEEDER_URL" -o "$TMP_SPEEDER/speederv2.tar.gz" 2>/dev/null; then
+            tar -xzf "$TMP_SPEEDER/speederv2.tar.gz" -C "$TMP_SPEEDER" 2>/dev/null || true
+            if [ -f "$TMP_SPEEDER/$BIN_NAME" ]; then
+                cp "$TMP_SPEEDER/$BIN_NAME" /usr/bin/udpspeeder
+                chmod 755 /usr/bin/udpspeeder
+                ln -sf /usr/bin/udpspeeder /usr/bin/speederv2 2>/dev/null || true
+                msg "UDPspeeder binary installed to /usr/bin/udpspeeder"
+            fi
+        fi
+        rm -rf "$TMP_SPEEDER" 2>/dev/null || true
+    fi
 }
 
 sync_time() {
