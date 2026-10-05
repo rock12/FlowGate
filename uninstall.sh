@@ -7,7 +7,7 @@
 
 set -u
 
-UNINSTALLER_VERSION="1.1.1"
+UNINSTALLER_VERSION="1.1.4"
 
 # ─── TUI helpers & Color detection ───────────────────────────────────────────
 ESC="$(printf '\033')"
@@ -148,6 +148,28 @@ if [ "$OPT_YES" -eq 0 ] && [ -t 0 ] 2>/dev/null; then
     printf '\n'
 fi
 
+run_with_timeout() {
+    _secs="$1"
+    shift
+    ( "$@" ) >/dev/null 2>&1 &
+    _subpid=$!
+    _cnt=0
+    while [ "$_cnt" -lt "$_secs" ]; do
+        if ! kill -0 "$_subpid" 2>/dev/null; then
+            wait "$_subpid" 2>/dev/null || true
+            return 0
+        fi
+        sleep 1
+        _cnt=$((_cnt + 1))
+    done
+    for _child in $(pgrep -P "$_subpid" 2>/dev/null || true); do
+        kill -9 "$_child" 2>/dev/null || true
+    done
+    kill -9 "$_subpid" 2>/dev/null || true
+    wait "$_subpid" 2>/dev/null || true
+    return 1
+}
+
 TOTAL_STEPS=6
 CURRENT_STEP=1
 
@@ -174,41 +196,62 @@ CURRENT_STEP=$((CURRENT_STEP + 1))
 # ─── STEP 2: Stop Services & Daemons ─────────────────────────────────────────
 tui_step "$CURRENT_STEP" "$TOTAL_STEPS" "Остановка служб и фоновых процессов..."
 
-rm -f /var/run/forkop*.lock /tmp/forkop*.lock 2>/dev/null || true
-
+# 1. Immediately disable autostart symlinks so nothing can respawn
 if [ -f "/etc/init.d/forkop" ]; then
-    if command -v timeout >/dev/null 2>&1; then
-        timeout 8 /etc/init.d/forkop stop >/dev/null 2>&1 || true
-    else
-        /etc/init.d/forkop stop >/dev/null 2>&1 || true
-    fi
     /etc/init.d/forkop disable >/dev/null 2>&1 || true
-    tui_ok "Служба /etc/init.d/forkop остановлена и отключена"
 fi
+rm -f /etc/rc.d/*forkop* 2>/dev/null || true
 
 if [ -f "/etc/init.d/sing-box" ]; then
     if grep -q "Forkop managed sing-box" "/etc/init.d/sing-box" 2>/dev/null; then
-        if command -v timeout >/dev/null 2>&1; then
-            timeout 8 /etc/init.d/sing-box stop >/dev/null 2>&1 || true
-        else
-            /etc/init.d/sing-box stop >/dev/null 2>&1 || true
-        fi
         /etc/init.d/sing-box disable >/dev/null 2>&1 || true
-        rm -f /etc/init.d/sing-box /etc/rc.d/*sing-box* 2>/dev/null || true
-        tui_ok "Управляемый сервис sing-box остановлен и удален"
+        rm -f /etc/rc.d/*sing-box* /etc/init.d/sing-box 2>/dev/null || true
     fi
 fi
 
-# Terminate running DPI, speeder and proxy processes
-killall -9 forkop >/dev/null 2>&1 || true
-killall -9 sing-box >/dev/null 2>&1 || true
-killall -9 udpspeeder >/dev/null 2>&1 || true
-killall -9 speederv2 >/dev/null 2>&1 || true
-killall -9 nfqws >/dev/null 2>&1 || true
-killall -9 nfqws2 >/dev/null 2>&1 || true
-killall -9 ciadpi >/dev/null 2>&1 || true
+# 2. Tell procd to stop tracking/respawning services immediately
+if command -v ubus >/dev/null 2>&1; then
+    ubus call service delete '{"name": "forkop"}' >/dev/null 2>&1 || true
+    if [ -f "/etc/init.d/sing-box" ] && grep -q "Forkop managed sing-box" "/etc/init.d/sing-box" 2>/dev/null; then
+        ubus call service delete '{"name": "sing-box"}' >/dev/null 2>&1 || true
+    fi
+fi
 
-tui_ok "Фоновые процессы завершены"
+# 3. Clean up lock files and lock directories
+rm -rf /var/run/forkop*.lock /tmp/forkop*.lock /var/run/forkop/ui-state/*.lock /var/run/forkop/*.lock 2>/dev/null || true
+rm -f /var/run/forkop/start*.pid /var/run/forkop/start.retry 2>/dev/null || true
+
+# 4. Attempt bounded graceful stop (max 4 seconds)
+if [ -x "/etc/init.d/forkop" ]; then
+    run_with_timeout 4 /etc/init.d/forkop stop || true
+fi
+
+# 5. Forcefully kill all proxy, DPI, speeder and ucode workers
+killall -9 sing-box 2>/dev/null || true
+killall -9 udpspeeder speederv2 nfqws nfqws2 ciadpi 2>/dev/null || true
+
+# Terminate any running ucode processes executing forkop modules
+for _pdir in /proc/[0-9]*; do
+    [ -d "$_pdir" ] || continue
+    _p="${_pdir##*/}"
+    [ "$_p" = "$$" ] && continue
+    if [ -r "$_pdir/cmdline" ]; then
+        if tr '\0' ' ' < "$_pdir/cmdline" 2>/dev/null | grep -q "forkop"; then
+            kill -9 "$_p" 2>/dev/null || true
+        fi
+    fi
+done
+
+# Clean any PID files that were tracked in runtime dirs
+for _pidfile in /var/run/forkop/*.pid /tmp/forkop/*.pid; do
+    if [ -f "$_pidfile" ]; then
+        _p="$(head -n 1 "$_pidfile" 2>/dev/null || true)"
+        [ -n "$_p" ] && [ "$_p" != "$$" ] && kill -9 "$_p" 2>/dev/null || true
+        rm -f "$_pidfile" 2>/dev/null || true
+    fi
+done
+
+tui_ok "Службы и фоновые процессы завершены"
 
 CURRENT_STEP=$((CURRENT_STEP + 1))
 
@@ -223,7 +266,7 @@ if command -v nft >/dev/null 2>&1; then
     rm -f /usr/share/nftables.d/chain-pre/input/*forkop*.nft 2>/dev/null || true
     rm -f /usr/share/nftables.d/rules/*forkop*.nft 2>/dev/null || true
     if [ -x "/etc/init.d/firewall" ]; then
-        /etc/init.d/firewall restart >/dev/null 2>&1 || true
+        run_with_timeout 8 /etc/init.d/firewall restart || true
     fi
     tui_ok "Таблицы nftables удалены, фаервол сброшен"
 fi
@@ -285,7 +328,7 @@ if command -v uci >/dev/null 2>&1 && [ -f "/etc/config/dhcp" ]; then
 fi
 
 if [ -f "/etc/init.d/dnsmasq" ]; then
-    /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+    run_with_timeout 8 /etc/init.d/dnsmasq restart || true
     tui_ok "Служба dnsmasq перезапущена в штатном режиме"
 fi
 
@@ -392,10 +435,10 @@ fi
 
 # Restart rpcd and uhttpd to immediately update LuCI menu
 if [ -f "/etc/init.d/rpcd" ]; then
-    /etc/init.d/rpcd reload >/dev/null 2>&1 || /etc/init.d/rpcd restart >/dev/null 2>&1 || true
+    run_with_timeout 5 /etc/init.d/rpcd reload || run_with_timeout 5 /etc/init.d/rpcd restart || true
 fi
 if [ -f "/etc/init.d/uhttpd" ]; then
-    /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+    run_with_timeout 5 /etc/init.d/uhttpd restart || true
 fi
 
 tui_ok "Кэш LuCI очищен, файлы и остаточные фрагменты полностью удалены"

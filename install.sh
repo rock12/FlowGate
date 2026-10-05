@@ -624,7 +624,7 @@ const INSTALLER_RC_DIR = env("FORKOP_INSTALLER_RC_DIR", "/etc/rc.d");
 const INSTALLER_START_RETRY_FILE = env("FORKOP_INSTALLER_START_RETRY_FILE", "/var/run/forkop/start.retry");
 const INSTALLER_START_RETRY_PID_FILE = env("FORKOP_INSTALLER_START_RETRY_PID_FILE", "/var/run/forkop/start-retry.pid");
 const INSTALLER_ORPHAN_PPID = env("FORKOP_INSTALLER_ORPHAN_PPID", "1");
-const INSTALLER_SERVICE_PROBE_TIMEOUT = int(env("FORKOP_INSTALLER_SERVICE_PROBE_TIMEOUT", "6")) || 6;
+const INSTALLER_SERVICE_PROBE_TIMEOUT = int(env("FORKOP_INSTALLER_SERVICE_PROBE_TIMEOUT", "15")) || 15;
 const INSTALLER_SERVICE_ACTION_TIMEOUT = int(env("FORKOP_INSTALLER_SERVICE_ACTION_TIMEOUT", "60")) || 60;
 
 let installer_command_sequence = 0;
@@ -1029,12 +1029,8 @@ function installer_cleanup_legacy() {
     let backend_running = running.known && running.value ?
         { known: true, value: false } :
         installer_backend_status_running_state(active_bin);
-    if (!enabled.known || (!running.known && !backend_running.known)) {
-        warn("Unable to determine the Forkop service state before installation.\n");
-        return false;
-    }
-    let was_enabled = enabled.value;
-    let was_running = running.value || backend_running.value;
+    let was_enabled = enabled.known ? enabled.value : false;
+    let was_running = (running.known && running.value) || (backend_running.known && backend_running.value);
 
     if (!installer_confirm_remove_https_dns_proxy())
         return false;
@@ -1043,11 +1039,12 @@ function installer_cleanup_legacy() {
         return false;
 
     if (path_executable(active_init)) {
-        if (!installer_service_action(active_init, "stop"))
-            return false;
+        if (!installer_service_action(active_init, "stop")) {
+            warn("Graceful stop timed out; force stopping existing Forkop processes.\n");
+            system("killall -9 sing-box udpspeeder speederv2 nfqws nfqws2 ciadpi >/dev/null 2>&1 || true");
+        }
         installer_restore_dnsmasq(active_bin, legacy_installed);
-        if (!installer_service_action(active_init, "disable"))
-            return false;
+        installer_service_action(active_init, "disable");
     }
 
     let packages_removed = true;
@@ -1350,19 +1347,22 @@ dnsmasq_failsafe_restore = function() {
 };
 
 function release_version_valid(value) {
-    return match(as_string(value), /^[0-9]+[.][0-9]+[.][0-9]+$/) != null;
+    let v = replace(as_string(value), /^v/i, "");
+    return match(v, /^[0-9]+(\.[0-9]+)+(-[a-zA-Z0-9.]+)?$/) != null;
 }
 
 function asset_matches(name, kind, ext, version) {
+    version = replace(as_string(version), /^v/i, "");
+    name = as_string(name);
     if (!release_version_valid(version))
         return false;
 
     if (kind == "backend")
-        return name == "forkop_" + version + "." + ext;
+        return name == "forkop_" + version + "." + ext || name == "forkop_" + version + "_all." + ext;
     if (kind == "app")
-        return name == "luci-app-forkop_" + version + "." + ext;
+        return name == "luci-app-forkop_" + version + "." + ext || name == "luci-app-forkop_" + version + "_all." + ext;
     if (kind == "i18n")
-        return name == "luci-i18n-forkop-ru_" + version + "." + ext;
+        return name == "luci-i18n-forkop-ru_" + version + "." + ext || name == "luci-i18n-forkop-ru_" + version + "_all." + ext;
     return false;
 }
 
@@ -1384,7 +1384,7 @@ function release_asset_url(kind, ext) {
     let release = read_stdin_json();
     if (type(release) != "object" || type(release.assets) != "array")
         return;
-    let version = as_string(release.tag_name || "");
+    let version = replace(as_string(release.tag_name || ""), /^v/i, "");
     if (!release_version_valid(version))
         return;
     for (let asset in release.assets) {
