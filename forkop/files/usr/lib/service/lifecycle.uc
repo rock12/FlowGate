@@ -758,15 +758,15 @@ function start_main() {
 }
 
 function disable_flow_offloading_runtime() {
-    if (!uci_available())
+    if (!uci_core.available())
         return;
-    let fo = uci_get("firewall.@defaults[0].flow_offloading");
-    let fohw = uci_get("firewall.@defaults[0].flow_offloading_hw");
+    let fo = uci_core.get("firewall.@defaults[0].flow_offloading");
+    let fohw = uci_core.get("firewall.@defaults[0].flow_offloading_hw");
     if (fo == "1" || fohw == "1") {
         log_message("Disabling firewall flow offloading to prevent TPROXY conflicts", "info");
-        uci_set("firewall.@defaults[0].flow_offloading", "0");
-        uci_set("firewall.@defaults[0].flow_offloading_hw", "0");
-        uci_commit("firewall");
+        uci_core.set("firewall.@defaults[0].flow_offloading", "0");
+        uci_core.set("firewall.@defaults[0].flow_offloading_hw", "0");
+        uci_core.commit("firewall");
         command_success_from_args([ "/etc/init.d/firewall", "reload" ]);
     }
 }
@@ -779,13 +779,13 @@ function disable_ipv6_runtime() {
     system("sysctl -w net.ipv6.conf.default.disable_ipv6=1 >/dev/null 2>&1");
     system("sysctl -w net.ipv6.conf.lo.disable_ipv6=1 >/dev/null 2>&1");
 
-    if (uci_available()) {
-        let dhcpv6 = uci_get("dhcp.lan.dhcpv6");
-        let ra = uci_get("dhcp.lan.ra");
+    if (uci_core.available()) {
+        let dhcpv6 = uci_core.get("dhcp.lan.dhcpv6");
+        let ra = uci_core.get("dhcp.lan.ra");
         if (dhcpv6 != "disabled" || ra != "disabled") {
-            uci_set("dhcp.lan.dhcpv6", "disabled");
-            uci_set("dhcp.lan.ra", "disabled");
-            uci_commit("dhcp");
+            uci_core.set("dhcp.lan.dhcpv6", "disabled");
+            uci_core.set("dhcp.lan.ra", "disabled");
+            uci_core.commit("dhcp");
             command_success_from_args([ "/etc/init.d/odhcpd", "restart" ]);
         }
     }
