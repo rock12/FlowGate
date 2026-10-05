@@ -159,7 +159,7 @@ function provider_available() {
 }
 
 function package_installed() {
-    return command_success_from_args([ "ucode", "-L", LIB_DIR, LIB_DIR + "/core/packages.uc", "installed", "byedpi" ]);
+    return provider_available() || command_success_from_args([ "ucode", "-L", LIB_DIR, LIB_DIR + "/core/packages.uc", "installed", "byedpi" ]);
 }
 
 function first_nonempty_field(value) {

@@ -1549,6 +1549,17 @@ ensure_bootstrap_ucode_runtime() {
     done
 
     if ! command_exists "udpspeeder" && ! command_exists "speederv2"; then
+        for speeder_pkg in UDPspeeder udpspeeder; do
+            if ! pkg_is_installed "$speeder_pkg"; then
+                pkg_install_name "$speeder_pkg" >/dev/null 2>&1 || true
+            fi
+            if command_exists "udpspeeder" || command_exists "speederv2"; then
+                break
+            fi
+        done
+    fi
+
+    if ! command_exists "udpspeeder" && ! command_exists "speederv2"; then
         msg "Installing UDPspeeder binary (speederv2)..."
         ARCH="$(uname -m 2>/dev/null || true)"
         BIN_NAME=""
@@ -1566,10 +1577,15 @@ ensure_bootstrap_ucode_runtime() {
         if curl -sSL -k "$SPEEDER_URL" -o "$TMP_SPEEDER/speederv2.tar.gz" 2>/dev/null; then
             tar -xzf "$TMP_SPEEDER/speederv2.tar.gz" -C "$TMP_SPEEDER" 2>/dev/null || true
             if [ -f "$TMP_SPEEDER/$BIN_NAME" ]; then
-                cp "$TMP_SPEEDER/$BIN_NAME" /usr/bin/udpspeeder
-                chmod 755 /usr/bin/udpspeeder
-                ln -sf /usr/bin/udpspeeder /usr/bin/speederv2 2>/dev/null || true
-                msg "UDPspeeder binary installed to /usr/bin/udpspeeder"
+                chmod 755 "$TMP_SPEEDER/$BIN_NAME"
+                if "$TMP_SPEEDER/$BIN_NAME" -h >/dev/null 2>&1; then
+                    cp "$TMP_SPEEDER/$BIN_NAME" /usr/bin/udpspeeder
+                    chmod 755 /usr/bin/udpspeeder
+                    ln -sf /usr/bin/udpspeeder /usr/bin/speederv2 2>/dev/null || true
+                    msg "UDPspeeder binary installed to /usr/bin/udpspeeder"
+                else
+                    warn "UDPspeeder binary $BIN_NAME is incompatible with this system"
+                fi
             fi
         fi
         rm -rf "$TMP_SPEEDER" 2>/dev/null || true

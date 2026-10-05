@@ -95,6 +95,15 @@ fi
 
 msg "==> Проверка наличия UDPspeeder..."
 if ! command -v udpspeeder >/dev/null 2>&1 && ! command -v speederv2 >/dev/null 2>&1; then
+    for speeder_pkg in UDPspeeder udpspeeder; do
+        install_pkg "$speeder_pkg" || true
+        if command -v udpspeeder >/dev/null 2>&1 || command -v speederv2 >/dev/null 2>&1; then
+            break
+        fi
+    done
+fi
+
+if ! command -v udpspeeder >/dev/null 2>&1 && ! command -v speederv2 >/dev/null 2>&1; then
     msg "Загрузка бинарного файла UDPspeeder (speederv2)..."
     ARCH="$(uname -m 2>/dev/null || true)"
     BIN_NAME=""
@@ -112,10 +121,15 @@ if ! command -v udpspeeder >/dev/null 2>&1 && ! command -v speederv2 >/dev/null 
     if curl -sSL -k "$SPEEDER_URL" -o "$TMP_SPEEDER/speederv2.tar.gz" 2>/dev/null; then
         tar -xzf "$TMP_SPEEDER/speederv2.tar.gz" -C "$TMP_SPEEDER" 2>/dev/null || true
         if [ -f "$TMP_SPEEDER/$BIN_NAME" ]; then
-            cp "$TMP_SPEEDER/$BIN_NAME" /usr/bin/udpspeeder
-            chmod 755 /usr/bin/udpspeeder
-            ln -sf /usr/bin/udpspeeder /usr/bin/speederv2 2>/dev/null || true
-            msg "UDPspeeder успешно установлен в /usr/bin/udpspeeder"
+            chmod 755 "$TMP_SPEEDER/$BIN_NAME"
+            if "$TMP_SPEEDER/$BIN_NAME" -h >/dev/null 2>&1; then
+                cp "$TMP_SPEEDER/$BIN_NAME" /usr/bin/udpspeeder
+                chmod 755 /usr/bin/udpspeeder
+                ln -sf /usr/bin/udpspeeder /usr/bin/speederv2 2>/dev/null || true
+                msg "UDPspeeder успешно установлен в /usr/bin/udpspeeder"
+            else
+                warn "Бинарный файл UDPspeeder $BIN_NAME несовместим с этой системой"
+            fi
         fi
     fi
     rm -rf "$TMP_SPEEDER" 2>/dev/null || true

@@ -197,7 +197,7 @@ function provider_available(cfg) {
 }
 
 function package_installed(cfg) {
-    return module_success([ LIB_DIR + "/core/packages.uc", "installed", cfg.package_name ]);
+    return provider_available(cfg) || module_success([ LIB_DIR + "/core/packages.uc", "installed", cfg.package_name ]);
 }
 
 function package_version_from_manager(cfg) {
@@ -479,6 +479,15 @@ function start_runtime(cfg) {
         log_message("Failed to prepare the Forkop " + cfg.status_label + " state directory in " + cfg.state_dir + ". Aborted.", "fatal");
         exit(1);
     }
+
+    if (cfg.provider_files_dir != "" && fs.stat(cfg.provider_files_dir) != null)
+        command_success_from_args([ "chmod", "-R", "a+rX", cfg.provider_files_dir ]);
+    if (cfg.provider_lua_dir != "" && fs.stat(cfg.provider_lua_dir) != null)
+        command_success_from_args([ "chmod", "-R", "a+rX", cfg.provider_lua_dir ]);
+    if (cfg.kind == "zapret2" && fs.stat("/opt/zapret2") != null)
+        command_success_from_args([ "chmod", "a+rx", "/opt/zapret2" ]);
+    if (cfg.provider_bin != "" && fs.stat(cfg.provider_bin) != null)
+        command_success_from_args([ "chmod", "755", cfg.provider_bin ]);
 
     let index_value = 1;
     for (let section in sections) {

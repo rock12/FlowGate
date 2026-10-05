@@ -8163,8 +8163,8 @@ async function runZapretCheck() {
       value: data.provider_path || ""
     },
     {
-      state: packageInstalled ? "success" : hasZapretRules ? "error" : "warning",
-      key: packageInstalled ? _("Zapret package is installed") : _("Zapret package is not installed"),
+      state: packageInstalled || providerAvailable ? "success" : hasZapretRules ? "error" : "warning",
+      key: packageInstalled || providerAvailable ? _("Zapret package is installed") : _("Zapret package is not installed"),
       value: ""
     },
     {
@@ -8249,8 +8249,8 @@ async function runZapret2Check() {
       value: data.provider_path || ""
     },
     {
-      state: packageInstalled ? "success" : hasZapret2Rules ? "error" : "warning",
-      key: packageInstalled ? _("Zapret2 package is installed") : _("Zapret2 package is not installed"),
+      state: packageInstalled || providerAvailable ? "success" : hasZapret2Rules ? "error" : "warning",
+      key: packageInstalled || providerAvailable ? _("Zapret2 package is installed") : _("Zapret2 package is not installed"),
       value: ""
     },
     {

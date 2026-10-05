@@ -65,12 +65,12 @@ export async function runZapret2Check() {
       value: data.provider_path || '',
     },
     {
-      state: packageInstalled
+      state: packageInstalled || providerAvailable
         ? 'success'
         : hasZapret2Rules
           ? 'error'
           : 'warning',
-      key: packageInstalled
+      key: packageInstalled || providerAvailable
         ? _('Zapret2 package is installed')
         : _('Zapret2 package is not installed'),
       value: '',
