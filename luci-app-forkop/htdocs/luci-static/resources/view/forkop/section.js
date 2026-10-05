@@ -8412,7 +8412,21 @@ function createSectionContent(section) {
 
     btn.addEventListener("click", () => fileInput.click());
 
-    return E("div", { style: "display:contents" }, [fileInput, btn]);
+    return E("div", { style: "display:block;width:100%;margin-bottom:6px;" }, [fileInput, btn]);
+  };
+
+  const origLoadAwgRender = o.render;
+  o.render = function () {
+    return Promise.resolve(origLoadAwgRender.apply(this, arguments)).then((node) => {
+      if (node) {
+        const field = node.querySelector(".cbi-value-field");
+        if (field) {
+          field.style.flexDirection = "column";
+          field.style.alignItems = "flex-start";
+        }
+      }
+      return node;
+    });
   };
 
   // Generate WARP config via warp-generation
@@ -8476,7 +8490,21 @@ function createSectionContent(section) {
       "click",
       (ev) => this.onclick && this.onclick.call(this, ev, section_id),
     );
-    return btn;
+    return E("div", { style: "display:block;width:100%;margin-bottom:6px;" }, [btn]);
+  };
+
+  const origGenerateWarpRender = o.render;
+  o.render = function () {
+    return Promise.resolve(origGenerateWarpRender.apply(this, arguments)).then((node) => {
+      if (node) {
+        const field = node.querySelector(".cbi-value-field");
+        if (field) {
+          field.style.flexDirection = "column";
+          field.style.alignItems = "flex-start";
+        }
+      }
+      return node;
+    });
   };
 
   o.onclick = function (ev, section_id) {
