@@ -829,7 +829,7 @@ function nft_create_runtime_base(table, localv4_set, common_set, port_set, ip_po
         return false;
 
     // TCP MSS Clamping: prevents MTU fragmentation and packet drops on Double NAT / PPPoE
-    nft_add_rule(table, "mangle_forward", [ "tcp", "flags", "syn", "tcp", "option", "maxseg", "size", "set", "rt", "mtu", "-", "40", "counter" ]);
+    nft_add_rule(table, "mangle_forward", [ "tcp", "flags", "syn", "tcp", "option", "maxseg", "size", "set", "rt", "mtu", "counter" ]);
 
     if (!nft_add_rule(table, "dns_redirect", [ "iifname", "@" + as_string(interface_set), "ip", "saddr", "@" + DNS_SOURCE_SET, "tcp", "dport", "53", "counter", "redirect", "to", ":" + as_string(runtime_constants.SOURCE_DNS_INBOUND_PORT) ]) ||
         !nft_add_rule(table, "dns_redirect", [ "iifname", "@" + as_string(interface_set), "ip", "saddr", "@" + DNS_SOURCE_SET, "udp", "dport", "53", "counter", "redirect", "to", ":" + as_string(runtime_constants.SOURCE_DNS_INBOUND_PORT) ]) ||
@@ -1349,8 +1349,7 @@ function ensure_tproxy_route_rule(table, mark, rt_tables_path) {
     if (!tproxy_route6_present(table)) {
         log_debug("Added IPv6 TPROXY route");
         if (!run_args([ "ip", "-6", "route", "add", "local", "::/0", "dev", "lo", "table", table ]) && !tproxy_route6_present(table)) {
-            log_fatal("Failed to add IPv6 route for tproxy. Aborted.");
-            return false;
+            log_warn("Failed to add IPv6 route for tproxy; IPv6 may be disabled.");
         }
     }
     else {
@@ -1371,8 +1370,7 @@ function ensure_tproxy_route_rule(table, mark, rt_tables_path) {
     if (!tproxy_marking_rule6_present(table, mark)) {
         log_debug("Creating IPv6 TPROXY marking rule");
         if (!run_args([ "ip", "-6", "rule", "add", "fwmark", as_string(mark) + "/" + as_string(mark), "table", table, "priority", "105" ]) && !tproxy_marking_rule6_present(table, mark)) {
-            log_fatal("Failed to create IPv6 marking rule. Aborted.");
-            return false;
+            log_warn("Failed to create IPv6 marking rule.");
         }
     }
     else {

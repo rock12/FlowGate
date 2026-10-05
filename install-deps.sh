@@ -78,12 +78,12 @@ fi
 msg "==> Отключение IPv6 (предотвращение утечек через провайдера)..."
 sysctl -w net.ipv6.conf.all.disable_ipv6=1 >/dev/null 2>&1 || true
 sysctl -w net.ipv6.conf.default.disable_ipv6=1 >/dev/null 2>&1 || true
-sysctl -w net.ipv6.conf.lo.disable_ipv6=1 >/dev/null 2>&1 || true
+sysctl -w net.ipv6.conf.lo.disable_ipv6=0 >/dev/null 2>&1 || true
 if [ -d /etc/sysctl.d ]; then
     cat << 'EOF' > /etc/sysctl.d/99-disable-ipv6.conf
 net.ipv6.conf.all.disable_ipv6 = 1
 net.ipv6.conf.default.disable_ipv6 = 1
-net.ipv6.conf.lo.disable_ipv6 = 1
+net.ipv6.conf.lo.disable_ipv6 = 0
 EOF
 fi
 if command -v uci >/dev/null 2>&1; then

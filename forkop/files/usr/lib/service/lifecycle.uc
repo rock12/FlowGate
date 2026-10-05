@@ -777,7 +777,7 @@ function disable_ipv6_runtime() {
 
     system("sysctl -w net.ipv6.conf.all.disable_ipv6=1 >/dev/null 2>&1");
     system("sysctl -w net.ipv6.conf.default.disable_ipv6=1 >/dev/null 2>&1");
-    system("sysctl -w net.ipv6.conf.lo.disable_ipv6=1 >/dev/null 2>&1");
+    system("sysctl -w net.ipv6.conf.lo.disable_ipv6=0 >/dev/null 2>&1");
 
     if (uci_core.available()) {
         let dhcpv6 = uci_core.get("dhcp.lan.dhcpv6");
