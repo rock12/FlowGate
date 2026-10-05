@@ -2122,42 +2122,60 @@ function import_builtin_subnets_from_rule(section, settings) {
             continue;
 
         let urls = BUILTIN_SUBNET_URLS[as_string(service)];
-        if (type(urls) != "array")
-            continue;
+        if (type(urls) == "array") {
+            for (let url in urls) {
+                let tmpfile = temp_path();
+                if (tmpfile == "") {
+                    ok = false;
+                    continue;
+                }
 
-        for (let url in urls) {
-            let tmpfile = temp_path();
-            if (tmpfile == "") {
-                ok = false;
-                continue;
-            }
+                if (!download_to_file(url, tmpfile, service_proxy_address(settings, "lists")) || !file_nonempty(tmpfile)) {
+                    log_message("Failed to download built-in " + as_string(service) + " subnet list; skipping it until the next successful update", "error");
+                    ok = false;
+                    remove_file(tmpfile);
+                    continue;
+                }
 
-            if (!download_to_file(url, tmpfile, service_proxy_address(settings, "lists")) || !file_nonempty(tmpfile)) {
-                log_message("Failed to download built-in " + as_string(service) + " subnet list; skipping it until the next successful update", "error");
-                ok = false;
+                if (!nft_module_success([
+                    "nft-add-community-subnet-file-for-uci-section",
+                    section_name(section),
+                    service,
+                    tmpfile,
+                    NFT_TABLE_NAME,
+                    NFT_COMMON_SET_NAME,
+                    NFT_IP_PORT_SET_NAME,
+                    NFT_INTERFACE_SET_NAME,
+                    NFT_DISCORD_SET_NAME,
+                    NFT_FAKEIP_MARK,
+                    "5000",
+                    NFT_COMMON6_SET_NAME,
+                    NFT_IP_PORT6_SET_NAME,
+                    NFT_DISCORD6_SET_NAME
+                ]))
+                    ok = false;
+
                 remove_file(tmpfile);
-                continue;
             }
-
-            if (!nft_module_success([
-                "nft-add-community-subnet-file-for-uci-section",
-                section_name(section),
-                service,
-                tmpfile,
-                NFT_TABLE_NAME,
-                NFT_COMMON_SET_NAME,
-                NFT_IP_PORT_SET_NAME,
-                NFT_INTERFACE_SET_NAME,
-                NFT_DISCORD_SET_NAME,
-                NFT_FAKEIP_MARK,
-                "5000",
-                NFT_COMMON6_SET_NAME,
-                NFT_IP_PORT6_SET_NAME,
-                NFT_DISCORD6_SET_NAME
-            ]))
-                ok = false;
-
-            remove_file(tmpfile);
+        }
+        else {
+            // Check if community list is YAML or plain list
+            let c_url = singbox_rulesets_module().community_url(service);
+            let ext = singbox_rulesets_module().file_extension(c_url);
+            if (ext == "yaml" || ext == "yml" || ext == "mrs" || ext == "list") {
+                let tmp_file = temp_path();
+                let tmp_subnets = temp_path();
+                ensure_dir(TMP_RULESET_FOLDER);
+                let json_path = TMP_RULESET_FOLDER + "/community-" + as_string(service) + ".json";
+                if (download_to_file(c_url, tmp_file, service_proxy_address(settings, "lists")) && file_nonempty(tmp_file)) {
+                    if (routing_rulesets_module().import_clash_yaml(tmp_file, json_path, tmp_subnets)) {
+                        if (file_nonempty(tmp_subnets)) {
+                            add_plain_subnet_file_to_nft_for_section(section, tmp_subnets);
+                        }
+                    }
+                }
+                remove_files([ tmp_file, tmp_subnets ]);
+            }
         }
     }
 
@@ -2178,6 +2196,12 @@ function import_custom_ruleset_subnets_from_local(path, format, section, label) 
     if (as_string(format) == "binary") {
         if (!command_success_from_args([ "sing-box", "rule-set", "decompile", path, "-o", json_tmpfile ])) {
             log_message("Failed to decompile rule set " + as_string(path), "error");
+            ok = false;
+        }
+    }
+    else if (as_string(format) == "yaml") {
+        if (!routing_rulesets_module().import_clash_yaml(path, json_tmpfile)) {
+            log_message("Failed to parse YAML rule set " + as_string(path), "error");
             ok = false;
         }
     }
@@ -2211,6 +2235,12 @@ function import_custom_ruleset_subnets_from_remote(url, format, section, label, 
     if (as_string(format) == "binary") {
         if (!command_success_from_args([ "sing-box", "rule-set", "decompile", remote_tmpfile, "-o", json_tmpfile ])) {
             log_message("Failed to decompile rule set " + as_string(url), "error");
+            ok = false;
+        }
+    }
+    else if (as_string(format) == "yaml") {
+        if (!routing_rulesets_module().import_clash_yaml(remote_tmpfile, json_tmpfile)) {
+            log_message("Failed to parse YAML rule set " + as_string(url), "error");
             ok = false;
         }
     }
@@ -2248,12 +2278,16 @@ function import_rule_sets_with_subnets_from_rule(section, settings) {
             if (!import_custom_ruleset_subnets_from_local(reference, "binary", section, "Rule set " + reference))
                 ok = false;
         }
+        else if (match(reference, /^\/.*\.ya?ml$/) != null) {
+            if (!import_custom_ruleset_subnets_from_local(reference, "yaml", section, "Rule set " + reference))
+                ok = false;
+        }
         else if (match(reference, /^\/.*\.json$/) != null) {
             if (!import_custom_ruleset_subnets_from_local(reference, "source", section, "Rule set " + reference))
                 ok = false;
         }
         else if (match(reference, /^https?:\/\//) != null) {
-            let format = extension == "json" ? "source" : (extension == "srs" ? "binary" : singbox_rulesets_module().remote_format(reference));
+            let format = extension == "json" ? "source" : (extension == "srs" ? "binary" : ((extension == "yaml" || extension == "yml") ? "yaml" : singbox_rulesets_module().remote_format(reference)));
             if (!import_custom_ruleset_subnets_from_remote(reference, format, section, "Rule set " + reference, settings))
                 ok = false;
         }
@@ -2301,6 +2335,18 @@ function import_domains_from_remote_domain_lists(section, settings) {
         log_message("Detected file extension: '" + extension + "'", "debug");
         if (extension == "json" || extension == "srs") {
             log_message("No update needed - sing-box manages updates automatically.", "info");
+            continue;
+        }
+        if (extension == "yaml" || extension == "yml") {
+            log_message("Import domains from a remote YAML list", "info");
+            let tmpfile = temp_path();
+            if (download_to_file(url, tmpfile, service_proxy_address(settings, "lists")) && file_nonempty(tmpfile)) {
+                let ruleset_path = remote_ruleset_path(section, "domains");
+                let tmp_subnets = temp_path();
+                ensure_ruleset_source(ruleset_path);
+                routing_rulesets_module().import_clash_yaml(tmpfile, ruleset_path, tmp_subnets);
+                remove_files([ tmpfile, tmp_subnets ]);
+            }
             continue;
         }
         log_message("Import domains from a remote plain-text list", "info");

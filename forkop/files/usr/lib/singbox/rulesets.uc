@@ -32,7 +32,49 @@ const COMMUNITY_SERVICES = {
     roblox: true,
     ads_hagezi_pro: true,
     supercell: true,
-    github: true
+    github: true,
+    wz_wardogs: true,
+    wz_apex: true,
+    wz_fortnite: true,
+    wz_darksouls: true,
+    wz_ru_gaming_all: true,
+    wz_activision: true,
+    wz_servers: true,
+    wz_ea: true,
+    wz_xbox: true,
+    wz_steam: true,
+    wz_download: true,
+    wz_torrent: true,
+    wz_win_spy: true,
+    wz_whitelist: true,
+    wz_gemini: true,
+    wz_copilot: true,
+    wz_adobe: true,
+    wz_netflix: true
+};
+
+const COMMUNITY_URL_OVERRIDES = {
+    ads_hagezi_pro: SRS_ADS_HAGEZI_PRO_URL,
+    supercell: SRS_SUPERCELL_URL,
+    github: SRS_GITHUB_URL,
+    wz_wardogs: "https://raw.githubusercontent.com/rock12/clash-warzone-rules/main/wardogs.yaml",
+    wz_apex: "https://raw.githubusercontent.com/rock12/clash-warzone-rules/main/apex-legends.yaml",
+    wz_fortnite: "https://raw.githubusercontent.com/rock12/clash-warzone-rules/main/fortnite.yaml",
+    wz_darksouls: "https://raw.githubusercontent.com/rock12/clash-warzone-rules/main/darksouls.yaml",
+    wz_ru_gaming_all: "https://raw.githubusercontent.com/rock12/clash-warzone-rules/main/ru-gaming-all.yaml",
+    wz_activision: "https://raw.githubusercontent.com/rock12/clash-warzone-rules/main/activision.yaml",
+    wz_servers: "https://raw.githubusercontent.com/rock12/clash-warzone-rules/main/warzone-servers.yaml",
+    wz_ea: "https://raw.githubusercontent.com/rock12/clash-warzone-rules/main/ea.yaml",
+    wz_xbox: "https://raw.githubusercontent.com/rock12/clash-warzone-rules/main/Xbox.yaml",
+    wz_steam: "https://raw.githubusercontent.com/rock12/clash-warzone-rules/main/SteamList.list",
+    wz_download: "https://raw.githubusercontent.com/rock12/clash-warzone-rules/main/Download.yaml",
+    wz_torrent: "https://raw.githubusercontent.com/rock12/clash-warzone-rules/main/torrent-domains.mrs",
+    wz_win_spy: "https://raw.githubusercontent.com/rock12/clash-warzone-rules/main/win-spy.mrs",
+    wz_whitelist: "https://raw.githubusercontent.com/rock12/clash-warzone-rules/main/whitelist.mrs",
+    wz_gemini: "https://raw.githubusercontent.com/rock12/clash-warzone-rules/main/Gemini.yaml",
+    wz_copilot: "https://raw.githubusercontent.com/rock12/clash-warzone-rules/main/Copilot.yaml",
+    wz_adobe: "https://raw.githubusercontent.com/rock12/clash-warzone-rules/main/AdobeActivation.yaml",
+    wz_netflix: "https://raw.githubusercontent.com/rock12/clash-warzone-rules/main/Netflix.yaml"
 };
 
 function as_string(value) {
@@ -45,12 +87,8 @@ function is_community(name) {
 
 function community_url(name) {
     name = as_string(name);
-    if (name == "ads_hagezi_pro")
-        return SRS_ADS_HAGEZI_PRO_URL;
-    if (name == "supercell")
-        return SRS_SUPERCELL_URL;
-    if (name == "github")
-        return SRS_GITHUB_URL;
+    if (COMMUNITY_URL_OVERRIDES[name])
+        return COMMUNITY_URL_OVERRIDES[name];
     return SRS_MAIN_URL + "/" + name + ".srs";
 }
 

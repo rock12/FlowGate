@@ -1,6 +1,8 @@
 "use strict";
 "require form";
 "require uci";
+"require ui";
+"require fs";
 "require baseclass";
 "require tools.widgets as widgets";
 "require view.forkop.main as main";
@@ -679,6 +681,120 @@ function createSettingsContent(section, capabilities) {
   );
   o.default = "0";
   o.rmempty = false;
+
+  o = section.option(
+    form.Flag,
+    "torrserver_direct",
+    _("Direct TorrServer traffic (Direct WAN)"),
+    _(
+      "Direct local TorrServer traffic directly to WAN bypassing VPN/TPROXY (similar to Tachyon). Requires TorrServer running under cgroup /services/torrserver.",
+    ),
+  );
+  o.default = "0";
+  o.rmempty = false;
+
+  o = section.option(
+    form.Button,
+    "_mtu_fix_btn",
+    _("MTU & Double NAT Optimization"),
+    _(
+      "Detect optimal MTU, Double NAT, and apply zero-downtime TCP MSS Clamping to prevent network drops.",
+    ),
+  );
+  o.inputtitle = _("Detect & Fix MTU");
+  o.inputstyle = "apply";
+  o.onclick = function () {
+    ui.showModal(_("MTU & Double NAT Detection"), [
+      E("p", { class: "spinning" }, _("Probing WAN MTU and detecting Double NAT...")),
+    ]);
+    fs.exec("/usr/bin/forkop", ["detect_mtu"])
+      .then(function (res) {
+        let data = {};
+        try {
+          data = JSON.parse((res && res.stdout) || "{}");
+        } catch (e) {}
+
+        const content = [
+          E("div", { class: "cbi-value" }, [
+            E("label", { class: "cbi-value-title" }, _("WAN Interface")),
+            E("div", { class: "cbi-value-field" }, data.ifname || _("Unknown")),
+          ]),
+          E("div", { class: "cbi-value" }, [
+            E("label", { class: "cbi-value-title" }, _("WAN IP")),
+            E("div", { class: "cbi-value-field" }, data.wan_ip || _("Unknown")),
+          ]),
+          E("div", { class: "cbi-value" }, [
+            E("label", { class: "cbi-value-title" }, _("Double NAT Status")),
+            E(
+              "div",
+              { class: "cbi-value-field", style: data.double_nat ? "color:orange;font-weight:bold;" : "color:green;" },
+              data.double_nat
+                ? _("Detected (Private IP or multi-hop gateway)")
+                : _("Not detected (Direct Public IP)"),
+            ),
+          ]),
+          E("div", { class: "cbi-value" }, [
+            E("label", { class: "cbi-value-title" }, _("Detected Link MTU")),
+            E("div", { class: "cbi-value-field" }, "" + (data.link_mtu || 1500)),
+          ]),
+          E("div", { class: "cbi-value" }, [
+            E("label", { class: "cbi-value-title" }, _("Optimal TCP MSS")),
+            E("div", { class: "cbi-value-field" }, "" + (data.tcp_mss || 1460)),
+          ]),
+          E("div", { class: "cbi-value" }, [
+            E("label", { class: "cbi-value-title" }, _("Safe AWG / TUN MTU")),
+            E(
+              "div",
+              { class: "cbi-value-field" },
+              `AWG: ${data.safe_awg_mtu || 1360}, TUN: ${data.safe_tun_mtu || 1400}`,
+            ),
+          ]),
+          E("div", { class: "cbi-value" }, [
+            E("label", { class: "cbi-value-title" }, _("TCP MSS Clamping")),
+            E(
+              "div",
+              { class: "cbi-value-field" },
+              data.nft_mss_clamped
+                ? _("Active in NFTables (Zero Downtime)")
+                : _("Not active"),
+            ),
+          ]),
+          E("div", { class: "right", style: "margin-top:1.5em;display:flex;gap:0.5em;justify-content:flex-end;" }, [
+            E(
+              "button",
+              {
+                class: "btn cbi-button-action",
+                click: function () {
+                  ui.showModal(_("Applying MTU Fix"), [
+                    E("p", { class: "spinning" }, _("Applying TCP MSS Clamping without restarting network...")),
+                  ]);
+                  fs.exec("/usr/bin/forkop", ["fix_mtu"])
+                    .then(function (fixRes) {
+                      ui.showModal(_("MTU Fix Applied"), [
+                        E("p", {}, _("Safe MTU and TCP MSS Clamping successfully applied with zero downtime.")),
+                        E("div", { class: "right", style: "margin-top:1em;" }, [
+                          E("button", { class: "btn", click: ui.hideModal }, _("Close")),
+                        ]),
+                      ]);
+                    })
+                    .catch(function (err) {
+                      ui.addNotification(null, E("p", {}, err.message || err));
+                      ui.hideModal();
+                    });
+                },
+              },
+              _("Apply TCP MSS Clamp & Safe MTU"),
+            ),
+            E("button", { class: "btn", click: ui.hideModal }, _("Close")),
+          ]),
+        ];
+        ui.showModal(_("MTU & Double NAT Diagnostics"), content);
+      })
+      .catch(function (err) {
+        ui.addNotification(null, E("p", {}, err.message || err));
+        ui.hideModal();
+      });
+  };
 }
 
 const EntryPoint = {

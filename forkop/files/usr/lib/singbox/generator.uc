@@ -350,17 +350,64 @@ function ensure_custom_ruleset(config, reference) {
         tag_name = "builtin-" + reference + "-ruleset";
         kind = "domains";
         if (!ruleset_registered(config, tag_name)) {
-            let rule_set = {
-                type: "remote",
-                tag: tag_name,
-                format: "binary",
-                url: runtime_rulesets.community_url(reference)
-            };
-            let detour = download_detour_tag(runtime_settings());
-            if (detour != "")
-                rule_set.download_detour = detour;
-            rule_set.update_interval = remote_ruleset_update_interval();
-            push(config.route.rule_set, rule_set);
+            let c_url = runtime_rulesets.community_url(reference);
+            let c_ext = runtime_rulesets.file_extension(c_url);
+            let local_srs = runtime_ruleset_folder + "/community-" + reference + ".srs";
+            let local_json = runtime_ruleset_folder + "/community-" + reference + ".json";
+
+            if (fs.stat(local_srs)) {
+                push(config.route.rule_set, {
+                    type: "local",
+                    tag: tag_name,
+                    format: "binary",
+                    path: local_srs
+                });
+            }
+            else if (fs.stat(local_json)) {
+                push(config.route.rule_set, {
+                    type: "local",
+                    tag: tag_name,
+                    format: "source",
+                    path: local_json
+                });
+            }
+            else if (c_ext == "json") {
+                let rule_set = {
+                    type: "remote",
+                    tag: tag_name,
+                    format: "source",
+                    url: c_url
+                };
+                let detour = download_detour_tag(runtime_settings());
+                if (detour != "")
+                    rule_set.download_detour = detour;
+                rule_set.update_interval = remote_ruleset_update_interval();
+                push(config.route.rule_set, rule_set);
+            }
+            else if (c_ext == "srs") {
+                let rule_set = {
+                    type: "remote",
+                    tag: tag_name,
+                    format: "binary",
+                    url: c_url
+                };
+                let detour = download_detour_tag(runtime_settings());
+                if (detour != "")
+                    rule_set.download_detour = detour;
+                rule_set.update_interval = remote_ruleset_update_interval();
+                push(config.route.rule_set, rule_set);
+            }
+            else {
+                if (!fs.stat(local_json)) {
+                    fs.writefile(local_json, '{"version":3,"rules":[]}\n');
+                }
+                push(config.route.rule_set, {
+                    type: "local",
+                    tag: tag_name,
+                    format: "source",
+                    path: local_json
+                });
+            }
         }
         return { tag: tag_name, kind };
     }
@@ -2791,17 +2838,64 @@ function ensure_community_ruleset(config, section_name, community) {
 
     let tag_name = ruleset_tag(section_name, community, "community");
     if (!ruleset_registered(config, tag_name)) {
-        let rule_set = {
-            type: "remote",
-            tag: tag_name,
-            format: "binary",
-            url: runtime_rulesets.community_url(community),
-            update_interval: remote_ruleset_update_interval()
-        };
-        let detour = download_detour_tag(runtime_settings(), "lists");
-        if (detour != "")
-            rule_set.download_detour = detour;
-        push(config.route.rule_set, rule_set);
+        let c_url = runtime_rulesets.community_url(community);
+        let c_ext = runtime_rulesets.file_extension(c_url);
+        let local_srs = runtime_ruleset_folder + "/community-" + community + ".srs";
+        let local_json = runtime_ruleset_folder + "/community-" + community + ".json";
+
+        if (fs.stat(local_srs)) {
+            push(config.route.rule_set, {
+                type: "local",
+                tag: tag_name,
+                format: "binary",
+                path: local_srs
+            });
+        }
+        else if (fs.stat(local_json)) {
+            push(config.route.rule_set, {
+                type: "local",
+                tag: tag_name,
+                format: "source",
+                path: local_json
+            });
+        }
+        else if (c_ext == "json") {
+            let rule_set = {
+                type: "remote",
+                tag: tag_name,
+                format: "source",
+                url: c_url,
+                update_interval: remote_ruleset_update_interval()
+            };
+            let detour = download_detour_tag(runtime_settings(), "lists");
+            if (detour != "")
+                rule_set.download_detour = detour;
+            push(config.route.rule_set, rule_set);
+        }
+        else if (c_ext == "srs") {
+            let rule_set = {
+                type: "remote",
+                tag: tag_name,
+                format: "binary",
+                url: c_url,
+                update_interval: remote_ruleset_update_interval()
+            };
+            let detour = download_detour_tag(runtime_settings(), "lists");
+            if (detour != "")
+                rule_set.download_detour = detour;
+            push(config.route.rule_set, rule_set);
+        }
+        else {
+            if (!fs.stat(local_json)) {
+                fs.writefile(local_json, '{"version":3,"rules":[]}\n');
+            }
+            push(config.route.rule_set, {
+                type: "local",
+                tag: tag_name,
+                format: "source",
+                path: local_json
+            });
+        }
     }
     return {
         tag: tag_name,

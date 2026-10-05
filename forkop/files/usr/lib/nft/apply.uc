@@ -822,10 +822,14 @@ function nft_create_runtime_base(table, localv4_set, common_set, port_set, ip_po
 
     if (!nft_create_chain(table, "dns_redirect", "{ type nat hook prerouting priority -101; policy accept; }") ||
         !nft_create_chain(table, "mangle", "{ type filter hook prerouting priority -149; policy accept; }") ||
+        !nft_create_chain(table, "mangle_forward", "{ type filter hook forward priority -149; policy accept; }") ||
         !nft_create_chain(table, "mangle_output", "{ type route hook output priority -150; policy accept; }") ||
         !nft_create_priority_chains(table) ||
         !nft_create_chain(table, "proxy", "{ type filter hook prerouting priority -100; policy accept; }"))
         return false;
+
+    // TCP MSS Clamping: prevents MTU fragmentation and packet drops on Double NAT / PPPoE
+    nft_add_rule(table, "mangle_forward", [ "tcp", "flags", "syn", "tcp", "option", "maxseg", "size", "set", "rt", "mtu", "-", "40", "counter" ]);
 
     if (!nft_add_rule(table, "dns_redirect", [ "iifname", "@" + as_string(interface_set), "ip", "saddr", "@" + DNS_SOURCE_SET, "tcp", "dport", "53", "counter", "redirect", "to", ":" + as_string(runtime_constants.SOURCE_DNS_INBOUND_PORT) ]) ||
         !nft_add_rule(table, "dns_redirect", [ "iifname", "@" + as_string(interface_set), "ip", "saddr", "@" + DNS_SOURCE_SET, "udp", "dport", "53", "counter", "redirect", "to", ":" + as_string(runtime_constants.SOURCE_DNS_INBOUND_PORT) ]) ||

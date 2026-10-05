@@ -53,7 +53,7 @@ install_pkg() {
 }
 
 msg "==> Установка основных зависимостей и библиотек ucode..."
-for pkg in ucode ucode-mod-fs ucode-mod-uci curl ca-bundle bind-dig ip-full coreutils-base64 nftables; do
+for pkg in ucode ucode-mod-fs ucode-mod-uci curl ca-bundle bind-dig ip-full coreutils-base64 nftables traceroute iputils-ping; do
     install_pkg "$pkg"
 done
 
@@ -66,5 +66,59 @@ msg "==> Проверка и установка модулей AmneziaWG (для
 for awg in kmod-amneziawg amneziawg-tools; do
     install_pkg "$awg"
 done
+
+msg "==> Отключение аппаратного и программного Flow Offloading (конфликт с TPROXY)..."
+if command -v uci >/dev/null 2>&1; then
+    uci set firewall.@defaults[0].flow_offloading='0' 2>/dev/null || true
+    uci set firewall.@defaults[0].flow_offloading_hw='0' 2>/dev/null || true
+    uci commit firewall 2>/dev/null || true
+    /etc/init.d/firewall reload >/dev/null 2>&1 || true
+fi
+
+msg "==> Отключение IPv6 (предотвращение утечек через провайдера)..."
+sysctl -w net.ipv6.conf.all.disable_ipv6=1 >/dev/null 2>&1 || true
+sysctl -w net.ipv6.conf.default.disable_ipv6=1 >/dev/null 2>&1 || true
+sysctl -w net.ipv6.conf.lo.disable_ipv6=1 >/dev/null 2>&1 || true
+if [ -d /etc/sysctl.d ]; then
+    cat << 'EOF' > /etc/sysctl.d/99-disable-ipv6.conf
+net.ipv6.conf.all.disable_ipv6 = 1
+net.ipv6.conf.default.disable_ipv6 = 1
+net.ipv6.conf.lo.disable_ipv6 = 1
+EOF
+fi
+if command -v uci >/dev/null 2>&1; then
+    uci set dhcp.lan.dhcpv6='disabled' 2>/dev/null || true
+    uci set dhcp.lan.ra='disabled' 2>/dev/null || true
+    uci commit dhcp 2>/dev/null || true
+    /etc/init.d/odhcpd reload >/dev/null 2>&1 || true
+fi
+
+msg "==> Проверка наличия UDPspeeder..."
+if ! command -v udpspeeder >/dev/null 2>&1 && ! command -v speederv2 >/dev/null 2>&1; then
+    msg "Загрузка бинарного файла UDPspeeder (speederv2)..."
+    ARCH="$(uname -m 2>/dev/null || true)"
+    BIN_NAME=""
+    case "$ARCH" in
+        aarch64*|arm64*) BIN_NAME="speederv2_arm" ;;
+        armv7*|armv6*|arm*) BIN_NAME="speederv2_arm" ;;
+        x86_64*|amd64*) BIN_NAME="speederv2_amd64" ;;
+        mips*le*) BIN_NAME="speederv2_mips24kc_le" ;;
+        mips*) BIN_NAME="speederv2_mips24kc_be" ;;
+        *) BIN_NAME="speederv2_arm" ;;
+    esac
+
+    TMP_SPEEDER="$(mktemp -d /tmp/udpspeeder.XXXXXX 2>/dev/null || echo /tmp)"
+    SPEEDER_URL="https://github.com/wangyu-/UDPspeeder/releases/download/20230206.0/speederv2_binaries.tar.gz"
+    if curl -sSL -k "$SPEEDER_URL" -o "$TMP_SPEEDER/speederv2.tar.gz" 2>/dev/null; then
+        tar -xzf "$TMP_SPEEDER/speederv2.tar.gz" -C "$TMP_SPEEDER" 2>/dev/null || true
+        if [ -f "$TMP_SPEEDER/$BIN_NAME" ]; then
+            cp "$TMP_SPEEDER/$BIN_NAME" /usr/bin/udpspeeder
+            chmod 755 /usr/bin/udpspeeder
+            ln -sf /usr/bin/udpspeeder /usr/bin/speederv2 2>/dev/null || true
+            msg "UDPspeeder успешно установлен в /usr/bin/udpspeeder"
+        fi
+    fi
+    rm -rf "$TMP_SPEEDER" 2>/dev/null || true
+fi
 
 msg "==> Все зависимости успешно проверены и установлены!"

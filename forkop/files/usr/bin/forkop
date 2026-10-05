@@ -197,6 +197,10 @@ function command_spec(command) {
         validate_nfqws_strategy_json: [ "diagnostics/runtime.uc", "validate-nfqws-strategy-json", 1 ],
         validate_nfqws2_strategy_json: [ "diagnostics/runtime.uc", "validate-nfqws2-strategy-json", 1 ],
         validate_byedpi_strategy_json: [ "providers/byedpi/validator.uc", "validate-json", 1 ],
+        detect_mtu: [ "network/mtu.uc", "detect", 0 ],
+        fix_mtu: [ "network/mtu.uc", "fix", 0 ],
+        get_torrserver_status: [ "service/torrserver.uc", "status", 0 ],
+        reconcile_torrserver: [ "service/torrserver.uc", "reconcile", 0 ],
         package_prerm: [ "service/package.uc", "prerm", 1 ],
         package_postinst: [ "service/package.uc", "postinst", 0 ],
         luci_postinst: [ "service/package.uc", "luci-postinst", 0 ]

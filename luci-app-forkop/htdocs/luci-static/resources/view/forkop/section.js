@@ -4708,9 +4708,7 @@ function populateActionOptionValues(option) {
   if (isByedpiInstalledForUi()) {
     option.value("byedpi", getActionOptionLabel("byedpi"));
   }
-  if (isUdpspeederInstalledForUi()) {
-    option.value("udpspeeder", getActionOptionLabel("udpspeeder"));
-  }
+  option.value("udpspeeder", getActionOptionLabel("udpspeeder"));
 }
 
 function getConfigListValues(section_id, key) {
@@ -7916,49 +7914,6 @@ function createSectionContent(section) {
   );
   o.depends("action", "udpspeeder");
   o.modalonly = true;
-
-  o = section.taboption(
-    "settings",
-    form.DummyValue,
-    "_udpspeeder_vps_deploy",
-    _("Server Deployment (VPS)"),
-    _("Commands to deploy and run UDPspeeder on your VPS server"),
-  );
-  o.depends("action", "udpspeeder");
-  o.modalonly = true;
-  o.rawhtml = true;
-  o.cfgvalue = function (section_id) {
-    const sPort = uci.get(UCI_PACKAGE, section_id, "udpspeeder_server_port") || "10901";
-    const tPort = uci.get(UCI_PACKAGE, section_id, "udpspeeder_target_port") || "51820";
-    const key = uci.get(UCI_PACKAGE, section_id, "udpspeeder_key") || "forkop";
-    const mode = uci.get(UCI_PACKAGE, section_id, "udpspeeder_mode") || "0";
-    const fec = uci.get(UCI_PACKAGE, section_id, "udpspeeder_fec") || "20:10";
-
-    const dockerCmd = `docker run -d --name udpspeeder --restart=always --net=host wangyu/udpspeeder:latest speederv2 -s -l 0.0.0.0:${sPort} -r 127.0.0.1:${tPort} -k "${key}" --mode ${mode} -f ${fec} --fix-latency`;
-    const binaryCmd = `curl -sSL https://raw.githubusercontent.com/wangyu-/UDPspeeder/master/install.sh | bash && speederv2 -s -l 0.0.0.0:${sPort} -r 127.0.0.1:${tPort} -k "${key}" --mode ${mode} -f ${fec} --fix-latency`;
-
-    return `
-      <div style="background:#1e1e2e;color:#cdd6f4;padding:14px;border-radius:8px;margin-top:8px;font-family:monospace;font-size:12px;border:1px solid #45475a;">
-        <div style="font-weight:bold;color:#89b4fa;margin-bottom:6px;font-size:13px;">
-          🚀 Команды для запуска на сервере (VPS) / Server Deployment
-        </div>
-        <p style="margin-bottom:8px;color:#a6adc8;font-size:11px;">
-          UDPspeeder должен быть запущен как на роутере (клиент), так и на VPS (сервер). Запустите одну из команд на вашем сервере:
-        </p>
-        <div style="margin-bottom:6px;font-weight:bold;color:#a6e3a1;">Вариант 1: Docker (Рекомендуется)</div>
-        <div style="position:relative;background:#181825;padding:8px 10px;border-radius:4px;border:1px solid #313244;overflow-x:auto;user-select:all;word-break:break-all;margin-bottom:6px;">
-          <code>${dockerCmd}</code>
-        </div>
-        <button type="button" class="cbi-button cbi-button-action" style="margin-bottom:12px;" onclick="navigator.clipboard.writeText('${dockerCmd}').then(()=>alert('Docker команда скопирована в буфер обмена!'))">📋 Скопировать Docker команду</button>
-
-        <div style="margin-bottom:6px;font-weight:bold;color:#f9e2af;">Вариант 2: Прямой запуск / Linux Binary</div>
-        <div style="position:relative;background:#181825;padding:8px 10px;border-radius:4px;border:1px solid #313244;overflow-x:auto;user-select:all;word-break:break-all;margin-bottom:6px;">
-          <code>${binaryCmd}</code>
-        </div>
-        <button type="button" class="cbi-button cbi-button-action" onclick="navigator.clipboard.writeText('${binaryCmd}').then(()=>alert('Linux команда скопирована в буфер обмена!'))">📋 Скопировать команду Linux</button>
-      </div>
-    `;
-  };
 
   o = section.taboption(
     "settings",

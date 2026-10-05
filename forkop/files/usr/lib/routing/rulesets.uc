@@ -499,12 +499,106 @@ function has_rules(path) {
     return length(array_or_empty(ruleset.rules)) > 0;
 }
 
+function parse_clash_rule_entry(line) {
+    line = trim_string(line);
+    if (line == "" || match(line, /^#/))
+        return null;
+
+    // Remove leading list bullet "- "
+    let m_bullet = match(line, /^[-*]\s*(.*)$/);
+    if (m_bullet != null)
+        line = trim_string(m_bullet[1]);
+
+    // Strip optional surrounding quotes
+    let m_quotes = match(line, /^['"](.*)['"]$/);
+    if (m_quotes != null)
+        line = trim_string(m_quotes[1]);
+
+    if (line == "" || match(line, /^(payload|rules):/i))
+        return null;
+
+    let parts = split(line, ",");
+    let rule_type = uc(trim_string(parts[0]));
+    let payload = length(parts) > 1 ? trim_string(parts[1]) : trim_string(parts[0]);
+
+    if (rule_type == "DOMAIN-SUFFIX")
+        return { type: "domain_suffix", value: domain_config.suffix_to_ascii(payload) };
+    if (rule_type == "DOMAIN")
+        return { type: "domain", value: domain_config.suffix_to_ascii(payload) };
+    if (rule_type == "DOMAIN-KEYWORD")
+        return { type: "domain_keyword", value: lc(payload) };
+    if (rule_type == "IP-CIDR" || rule_type == "IP-CIDR6")
+        return { type: "ip_cidr", value: payload };
+
+    // Clash "+.example.com" prefix syntax
+    if (substr(payload, 0, 2) == "+.")
+        return { type: "domain_suffix", value: domain_config.suffix_to_ascii(substr(payload, 2)) };
+
+    // If it looks like an IP or CIDR
+    if (ip.nft_ip_or_cidr(payload))
+        return { type: "ip_cidr", value: payload };
+
+    // If it looks like a domain
+    if (index(payload, ".") >= 0)
+        return { type: "domain_suffix", value: domain_config.suffix_to_ascii(payload) };
+
+    return null;
+}
+
+function import_clash_yaml(yaml_path, ruleset_path, subnets_lst_path) {
+    let data = fs.readfile(yaml_path);
+    if (data == null)
+        return false;
+
+    let domains = [];
+    let domain_suffixes = [];
+    let domain_keywords = [];
+    let ip_cidrs = [];
+
+    for (let raw_line in split(as_string(data), "\n")) {
+        let entry = parse_clash_rule_entry(raw_line);
+        if (entry == null || entry.value == null || entry.value == "")
+            continue;
+
+        if (entry.type == "domain_suffix")
+            push(domain_suffixes, entry.value);
+        else if (entry.type == "domain")
+            push(domains, entry.value);
+        else if (entry.type == "domain_keyword")
+            push(domain_keywords, entry.value);
+        else if (entry.type == "ip_cidr")
+            push(ip_cidrs, entry.value);
+    }
+
+    let rule_obj = {};
+    if (length(domains) > 0) rule_obj.domain = unique_values(domains);
+    if (length(domain_suffixes) > 0) rule_obj.domain_suffix = unique_values(domain_suffixes);
+    if (length(domain_keywords) > 0) rule_obj.domain_keyword = unique_values(domain_keywords);
+    if (length(ip_cidrs) > 0) rule_obj.ip_cidr = unique_values(ip_cidrs);
+
+    let ruleset = {
+        version: 3,
+        rules: [ rule_obj ]
+    };
+
+    if (!write_json_file(ruleset_path, ruleset))
+        return false;
+
+    if (subnets_lst_path && length(ip_cidrs) > 0) {
+        write_text_file(subnets_lst_path, join("\n", unique_values(ip_cidrs)) + "\n");
+    }
+
+    return true;
+}
+
 function module_exports() {
     return {
         create_source,
         patch_source,
         patch_source_values,
         import_plain_list,
+        import_clash_yaml,
+        parse_clash_rule_entry,
         extract_ip_cidr,
         extract_ip_cidr_nft_elements,
         has_domain_matchers,
@@ -528,6 +622,8 @@ else if (mode == "patch-source")
     patch_source(ARGV[1], ARGV[2], ARGV[3]);
 else if (mode == "import-plain-list")
     import_plain_list(ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6], ARGV[7]);
+else if (mode == "import-clash-yaml")
+    exit(import_clash_yaml(ARGV[1], ARGV[2], ARGV[3]) ? 0 : 1);
 else if (mode == "extract-ip-cidr")
     extract_ip_cidr(ARGV[1], ARGV[2]);
 else if (mode == "extract-ip-cidr-nft")
@@ -537,6 +633,6 @@ else if (mode == "has-domain-matchers")
 else if (mode == "has-rules")
     exit(has_rules(ARGV[1]) ? 0 : 1);
 else {
-    warn("Usage: routing/rulesets.uc <create-source|tag|patch-source|import-plain-list|extract-ip-cidr|extract-ip-cidr-nft|has-domain-matchers|has-rules> ...\n");
+    warn("Usage: routing/rulesets.uc <create-source|tag|patch-source|import-plain-list|import-clash-yaml|extract-ip-cidr|extract-ip-cidr-nft|has-domain-matchers|has-rules> ...\n");
     exit(1);
 }

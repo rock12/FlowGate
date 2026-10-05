@@ -2466,6 +2466,197 @@ function configureServerSection(sectionRef, options = {}) {
   sectionRef.renderRowActions = function (sectionId) {
     return renderServerRowActions(this, sectionId);
   };
+
+  const originalSectionRender = sectionRef.render;
+  sectionRef.render = function () {
+    return Promise.resolve(originalSectionRender.apply(this, arguments)).then(
+      (node) => {
+        const helperCard = renderUdpspeederVpsDeploymentCard();
+        if (node && helperCard) {
+          node.appendChild(helperCard);
+        }
+        return node;
+      },
+    );
+  };
+}
+
+function renderUdpspeederVpsDeploymentCard() {
+  const listenPortInput = E("input", {
+    type: "number",
+    class: "cbi-input-text",
+    value: "6510",
+    style: "width: 100px;",
+  });
+  const targetPortInput = E("input", {
+    type: "number",
+    class: "cbi-input-text",
+    value: "443",
+    style: "width: 100px;",
+  });
+  const keyInput = E("input", {
+    type: "text",
+    class: "cbi-input-text",
+    value: "my_udpspeeder_secret",
+    style: "width: 200px;",
+  });
+  const fecInput = E("input", {
+    type: "text",
+    class: "cbi-input-text",
+    value: "-f 20:10 -t 1000 -q1 --timeout 1",
+    style: "width: 250px;",
+  });
+
+  const dockerOutput = E("textarea", {
+    class: "cbi-input-textarea",
+    readonly: "readonly",
+    rows: 2,
+    style: "font-family:monospace;width:100%;resize:none;margin-top:4px;",
+  });
+
+  const binaryOutput = E("textarea", {
+    class: "cbi-input-textarea",
+    readonly: "readonly",
+    rows: 2,
+    style: "font-family:monospace;width:100%;resize:none;margin-top:4px;",
+  });
+
+  function updateCommands() {
+    const lPort = listenPortInput.value.trim() || "6510";
+    const rPort = targetPortInput.value.trim() || "443";
+    const key = keyInput.value.trim() || "password";
+    const fec = fecInput.value.trim() || "-f 20:10 -t 1000 -q1 --timeout 1";
+
+    dockerOutput.value = `docker run -d --net=host --restart=always --name udpspeeder wangyu/speederv2 -s -l0.0.0.0:${lPort} -r127.0.0.1:${rPort} -k "${key}" ${fec}`;
+    binaryOutput.value = `./speederv2 -s -l0.0.0.0:${lPort} -r127.0.0.1:${rPort} -k "${key}" ${fec}`;
+  }
+
+  listenPortInput.addEventListener("input", updateCommands);
+  targetPortInput.addEventListener("input", updateCommands);
+  keyInput.addEventListener("input", updateCommands);
+  fecInput.addEventListener("input", updateCommands);
+  updateCommands();
+
+  function copyText(textarea, btn) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(textarea.value).then(() => {
+        const orig = btn.innerText;
+        btn.innerText = _("Copied!");
+        setTimeout(() => {
+          btn.innerText = orig;
+        }, 1500);
+      });
+    } else {
+      textarea.select();
+      document.execCommand("copy");
+    }
+  }
+
+  const copyDockerBtn = E(
+    "button",
+    {
+      class: "btn cbi-button-action",
+      style: "margin-top:4px;",
+      click: (e) => {
+        e.preventDefault();
+        copyText(dockerOutput, copyDockerBtn);
+      },
+    },
+    _("Copy Docker Command"),
+  );
+
+  const copyBinaryBtn = E(
+    "button",
+    {
+      class: "btn cbi-button-action",
+      style: "margin-top:4px;",
+      click: (e) => {
+        e.preventDefault();
+        copyText(binaryOutput, copyBinaryBtn);
+      },
+    },
+    _("Copy Linux Binary Command"),
+  );
+
+  return E("div", { class: "cbi-section", style: "margin-top:24px;" }, [
+    E("h3", {}, _("UDPspeeder Server VPS Deployment Generator")),
+    E(
+      "div",
+      { class: "cbi-section-descr" },
+      _(
+        "Generate server launch commands to deploy UDPspeeder on your remote VPS server. Use this alongside the client UDPspeeder action in Sections.",
+      ),
+    ),
+    E(
+      "div",
+      {
+        class: "cbi-section-node",
+        style:
+          "padding:12px;background:rgba(0,0,0,0.02);border:1px solid #ddd;border-radius:6px;",
+      },
+      [
+        E(
+          "div",
+          {
+            style:
+              "display:flex;flex-wrap:wrap;gap:16px;margin-bottom:12px;",
+          },
+          [
+            E("div", {}, [
+              E(
+                "label",
+                { style: "display:block;font-weight:bold;margin-bottom:4px;" },
+                _("VPS Listen Port"),
+              ),
+              listenPortInput,
+            ]),
+            E("div", {}, [
+              E(
+                "label",
+                { style: "display:block;font-weight:bold;margin-bottom:4px;" },
+                _("Forward To Port (Target)"),
+              ),
+              targetPortInput,
+            ]),
+            E("div", {}, [
+              E(
+                "label",
+                { style: "display:block;font-weight:bold;margin-bottom:4px;" },
+                _("Pre-Shared Key (-k)"),
+              ),
+              keyInput,
+            ]),
+            E("div", {}, [
+              E(
+                "label",
+                { style: "display:block;font-weight:bold;margin-bottom:4px;" },
+                _("FEC / Timeout Options"),
+              ),
+              fecInput,
+            ]),
+          ],
+        ),
+        E("div", { style: "margin-bottom:12px;" }, [
+          E(
+            "label",
+            { style: "display:block;font-weight:bold;" },
+            _("1. Docker Command (Recommended)"),
+          ),
+          dockerOutput,
+          copyDockerBtn,
+        ]),
+        E("div", {}, [
+          E(
+            "label",
+            { style: "display:block;font-weight:bold;" },
+            _("2. Linux Binary Command"),
+          ),
+          binaryOutput,
+          copyBinaryBtn,
+        ]),
+      ],
+    ),
+  ]);
 }
 
 function createServerContent(section, options = {}) {

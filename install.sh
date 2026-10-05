@@ -1965,6 +1965,30 @@ post_install() {
     FORKOP_WAS_ENABLED="$FORKOP_WAS_ENABLED" FORKOP_WAS_RUNNING="$FORKOP_WAS_RUNNING" \
         install_json_ucode installer-post-install ||
         fail "Failed to complete Forkop post-install actions"
+
+    if command -v uci >/dev/null 2>&1; then
+        uci set firewall.@defaults[0].flow_offloading='0' 2>/dev/null || true
+        uci set firewall.@defaults[0].flow_offloading_hw='0' 2>/dev/null || true
+        uci commit firewall 2>/dev/null || true
+        /etc/init.d/firewall reload >/dev/null 2>&1 || true
+    fi
+
+    sysctl -w net.ipv6.conf.all.disable_ipv6=1 >/dev/null 2>&1 || true
+    sysctl -w net.ipv6.conf.default.disable_ipv6=1 >/dev/null 2>&1 || true
+    sysctl -w net.ipv6.conf.lo.disable_ipv6=1 >/dev/null 2>&1 || true
+    if [ -d /etc/sysctl.d ]; then
+        cat << 'EOF' > /etc/sysctl.d/99-disable-ipv6.conf
+net.ipv6.conf.all.disable_ipv6 = 1
+net.ipv6.conf.default.disable_ipv6 = 1
+net.ipv6.conf.lo.disable_ipv6 = 1
+EOF
+    fi
+    if command -v uci >/dev/null 2>&1; then
+        uci set dhcp.lan.dhcpv6='disabled' 2>/dev/null || true
+        uci set dhcp.lan.ra='disabled' 2>/dev/null || true
+        uci commit dhcp 2>/dev/null || true
+        /etc/init.d/odhcpd reload >/dev/null 2>&1 || true
+    fi
 }
 
 main() {

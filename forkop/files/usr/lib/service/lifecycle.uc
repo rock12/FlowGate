@@ -111,6 +111,8 @@ const ZAPRET2_UC = LIB_DIR + "/providers/zapret2/runtime.uc";
 const BYEDPI_UC = LIB_DIR + "/providers/byedpi/runtime.uc";
 const UDPSPEEDER_UC = LIB_DIR + "/providers/udpspeeder/runtime.uc";
 const PACKAGES_UC = LIB_DIR + "/core/packages.uc";
+const TORRSERVER_UC = LIB_DIR + "/service/torrserver.uc";
+const MTU_UC = LIB_DIR + "/network/mtu.uc";
 
 let start_subscription_update_lock_held = false;
 let subscription_caches_prepared = getenv("FORKOP_SUBSCRIPTION_CACHES_PREPARED") || "0";
@@ -749,12 +751,50 @@ function start_main() {
     release_start_subscription_update_lock();
     module_success(ZAPRET_UC, [ "start-runtime" ]);
     module_success(ZAPRET2_UC, [ "start-runtime" ]);
+    module_success(TORRSERVER_UC, [ "reconcile" ]);
 
     module_background(UPDATES_UC, [ "list-update" ]);
     return 0;
 }
 
+function disable_flow_offloading_runtime() {
+    if (!uci_available())
+        return;
+    let fo = uci_get("firewall.@defaults[0].flow_offloading");
+    let fohw = uci_get("firewall.@defaults[0].flow_offloading_hw");
+    if (fo == "1" || fohw == "1") {
+        log_message("Disabling firewall flow offloading to prevent TPROXY conflicts", "info");
+        uci_set("firewall.@defaults[0].flow_offloading", "0");
+        uci_set("firewall.@defaults[0].flow_offloading_hw", "0");
+        uci_commit("firewall");
+        command_success_from_args([ "/etc/init.d/firewall", "reload" ]);
+    }
+}
+
+function disable_ipv6_runtime() {
+    if (!setting_bool("disable_ipv6", true))
+        return;
+
+    system("sysctl -w net.ipv6.conf.all.disable_ipv6=1 >/dev/null 2>&1");
+    system("sysctl -w net.ipv6.conf.default.disable_ipv6=1 >/dev/null 2>&1");
+    system("sysctl -w net.ipv6.conf.lo.disable_ipv6=1 >/dev/null 2>&1");
+
+    if (uci_available()) {
+        let dhcpv6 = uci_get("dhcp.lan.dhcpv6");
+        let ra = uci_get("dhcp.lan.ra");
+        if (dhcpv6 != "disabled" || ra != "disabled") {
+            uci_set("dhcp.lan.dhcpv6", "disabled");
+            uci_set("dhcp.lan.ra", "disabled");
+            uci_commit("dhcp");
+            command_success_from_args([ "/etc/init.d/odhcpd", "restart" ]);
+        }
+    }
+}
+
 function start_impl() {
+    disable_flow_offloading_runtime();
+    disable_ipv6_runtime();
+
     let status = start_main();
     if (status != 0)
         return status;
@@ -811,6 +851,7 @@ function stop_main() {
     module_success(ZAPRET2_UC, [ "stop-runtime" ]);
     module_success(BYEDPI_UC, [ "stop-runtime" ]);
     module_success(UDPSPEEDER_UC, [ "stop-runtime" ]);
+    module_success(TORRSERVER_UC, [ "remove-rule" ]);
 
     if (command_success_from_args([ "nft", "list", "table", "inet", NFT_TABLE_NAME ]))
         command_success_from_args([ "nft", "delete", "table", "inet", NFT_TABLE_NAME ]);
