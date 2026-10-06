@@ -7,7 +7,7 @@
 
 set -u
 
-UNINSTALLER_VERSION="1.1.4"
+UNINSTALLER_VERSION="1.1.5"
 
 # ─── TUI helpers & Color detection ───────────────────────────────────────────
 ESC="$(printf '\033')"
