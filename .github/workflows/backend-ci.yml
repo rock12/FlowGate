@@ -60,8 +60,23 @@ jobs:
       - name: Run backend tests
         shell: bash
         run: |
+          set +e
+          failed=0
           for test_file in tests/*.sh; do
             echo "::group::$test_file"
-            bash "$test_file"
+            output=$(bash "$test_file" 2>&1)
+            status=$?
+            echo "$output"
             echo "::endgroup::"
+            if [ $status -ne 0 ]; then
+              echo "::error file=$test_file::Test failed with exit code $status"
+              echo "### ❌ Failed: \`$test_file\` (exit $status)" >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+              echo "$output" >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+              failed=1
+            fi
           done
+          if [ $failed -ne 0 ]; then
+            exit 1
+          fi
