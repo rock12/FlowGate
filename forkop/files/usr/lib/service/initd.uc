@@ -275,7 +275,7 @@ function schedule_start_retry(path, delay_seconds) {
     let worker = command_from_args([ "sleep", delay_seconds ]) +
         "; " + command_from_args([ "rm", "-f", path ]) +
         "; exec " + command_from_args([ SERVICE_INIT, "retry_start_on_wan_up" ]);
-    let result = command_capture(command_from_args([ "sh", "-c", worker ]) + " >/dev/null 2>&1 & echo $!");
+    let result = command_capture(command_from_args([ "sh", "-c", worker ]) + " >/dev/null 2>&1 1000>&- & echo $!");
     let pid = trim(result.output);
     if (result.status != 0 || !numeric_text(pid))
         return false;

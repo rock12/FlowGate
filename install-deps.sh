@@ -58,7 +58,7 @@ for pkg in ucode ucode-mod-fs ucode-mod-uci curl ca-bundle bind-dig ip-full core
 done
 
 msg "==> Установка необходимых модулей ядра Linux..."
-for mod in kmod-tun kmod-nft-tproxy kmod-nft-nat kmod-inet-diag kmod-netlink-diag; do
+for mod in kmod-tun kmod-nft-tproxy kmod-nft-nat kmod-nft-queue kmod-inet-diag kmod-netlink-diag; do
     install_pkg "$mod"
 done
 
