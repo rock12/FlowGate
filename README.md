@@ -1,10 +1,10 @@
 # FlowGate 🚀
 
-[![Releases](https://img.shields.io/github/v/release/rock12/forkop?label=Release&color=blue)](https://github.com/rock12/forkop/releases)
+[![Releases](https://img.shields.io/github/v/release/rock12/flowgate?label=Release&color=blue)](https://github.com/rock12/flowgate/releases)
 [![OpenWrt](https://img.shields.io/badge/OpenWrt-24.10%20%7C%2025.x-blue?logo=openwrt&logoColor=white)](https://openwrt.org/)
 [![License](https://img.shields.io/badge/License-GPL--2.0-green.svg)](LICENSE)
 
-**FlowGate** *(ранее Forkop)* — мощный, надёжный и удобный инструмент умной маршрутизации и обхода сетевых блокировок для роутеров на базе **OpenWrt** (версии 24.10, 25.x и новее). 
+**FlowGate** — мощный, надёжный и удобный инструмент умной маршрутизации и обхода сетевых блокировок для роутеров на базе **OpenWrt** (версии 24.10, 25.x и новее). 
 
 Вся настройка осуществляется через красивый веб-интерфейс **LuCI**. Настроив роутер один раз, вы получаете свободный доступ к сервисам (YouTube, Discord, Instagram), онлайн-играм и стримингу на **всех** домашних устройствах (компьютеры, смартфоны, Smart TV, консоли) без необходимости устанавливать программы и VPN на каждое из них!
 
@@ -40,10 +40,10 @@
 Скопируйте и вставьте одну строку:
 
 ```sh
-sh <(wget -O - https://raw.githubusercontent.com/rock12/forkop/main/install.sh)
+sh <(wget -O - https://raw.githubusercontent.com/rock12/flowgate/main/install.sh)
 ```
 
-*(Если в вашей прошивке используется `curl`, можно использовать: `sh <(curl -fsSL https://raw.githubusercontent.com/rock12/forkop/main/install.sh)`)*
+*(Если в вашей прошивке используется `curl`, можно использовать: `sh <(curl -fsSL https://raw.githubusercontent.com/rock12/flowgate/main/install.sh)`)*
 
 #### Что сделает скрипт автоматически:
 1. Определит архитектуру процессора роутера и версию OpenWrt (24.10 с `opkg` или 25.x с `apk`).
@@ -96,7 +96,7 @@ sh <(wget -O - https://raw.githubusercontent.com/rock12/forkop/main/install.sh)
 
 ## 🛠️ Ручная установка пакетов (для продвинутых)
 
-Если вы хотите установить пакеты вручную, скачайте архивы со страницы [Releases](https://github.com/rock12/forkop/releases) и выполните:
+Если вы хотите установить пакеты вручную, скачайте архивы со страницы [Releases](https://github.com/rock12/flowgate/releases) и выполните:
 
 ### Для OpenWrt с менеджером `apk` (OpenWrt 25.x / snapshot):
 ```sh
@@ -141,9 +141,9 @@ rm -f /tmp/luci-indexcache* /var/luci-indexcache*
 Для безопасного и чистого удаления со сбросом правил фаервола, восстановлением стандартного DNS и сохранением резервной копии конфигурации выполните по SSH одну команду:
 
 ```sh
-sh <(wget -O - https://raw.githubusercontent.com/rock12/forkop/main/uninstall.sh)
+sh <(wget -O - https://raw.githubusercontent.com/rock12/flowgate/main/uninstall.sh)
 ```
-*(или через curl: `sh <(curl -fsSL https://raw.githubusercontent.com/rock12/forkop/main/uninstall.sh)`)*
+*(или через curl: `sh <(curl -fsSL https://raw.githubusercontent.com/rock12/flowgate/main/uninstall.sh)`)*
 
 Скрипт аккуратно остановит службы, сбросит таблицы nftables, вернет стандартные настройки DNS dnsmasq и удалит пакеты. Если нужно удалить абсолютно всё без сохранения бэкапов конфигурации, добавьте ключ `--purge`.
 </details>
