@@ -1521,6 +1521,9 @@ pkg_install_name() {
 
 pkg_install_files() {
     if [ "$PKG_IS_APK" -eq 1 ]; then
+        if [ -f /etc/apk/world ]; then
+            sed -i -E '/^(forkop|luci-app-forkop|luci-i18n-forkop-ru)([><= ].*)?$/d' /etc/apk/world 2>/dev/null || true
+        fi
         apk add --allow-untrusted "$@" </dev/null
     else
         opkg install --force-overwrite --force-downgrade "$@" </dev/null
