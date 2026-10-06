@@ -5088,7 +5088,7 @@ var LOG_WATCHER_INTERVAL_MS = 1e4;
 var LOG_WATCHER_START_DELAY_MS = 5e3;
 function componentDisplayName(component) {
   const names = {
-    forkop: "Forkop",
+    forkop: "FlowGate",
     sing_box: "sing-box",
     zapret: "Zapret",
     zapret2: "Zapret2",
@@ -5108,7 +5108,7 @@ function showLogNotification(notification) {
     return;
   }
   ui.addNotification(
-    _("Forkop Error"),
+    _("FlowGate Error"),
     E("div", {}, notification.line),
     "error",
     "fkp-log-error-notification"

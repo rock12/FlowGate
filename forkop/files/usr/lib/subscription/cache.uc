@@ -431,7 +431,8 @@ let auto_user_agent_profiles = [
     "v2rayN",
     "v2rayNG",
     "Mihomo",
-    "Clash.Meta"
+    "Clash.Meta",
+    "ClashMeta"
 ];
 
 let auto_user_agents = {};
@@ -1612,6 +1613,7 @@ function download_subscription_into_cache(section_name_value, subscription_url, 
     let parser = subscription_parser();
 
     let attempt_index = 0;
+    let last_download_status = 0;
     for (let effective_user_agent in user_agent_candidates(subscription_user_agent, cached_user_agent, default_user_agent)) {
         attempt_index++;
         unlink_path(raw_tmpfile);
@@ -1621,6 +1623,7 @@ function download_subscription_into_cache(section_name_value, subscription_url, 
 
         let effective_hwid = get_subscription_hwid(subscription_hwid);
         let download_status = download_subscription(subscription_url, raw_tmpfile, service_proxy_address_value, headers_tmpfile, effective_user_agent, effective_hwid);
+        last_download_status = download_status;
         if (download_status != 0) {
             if (metadata_output_path != "")
                 unlink_path(metadata_output_path);
@@ -1734,7 +1737,9 @@ function download_subscription_into_cache(section_name_value, subscription_url, 
     unlink_path(headers_tmpfile);
     unlink_path(normalized_tmpfile);
     unlink_path(metadata_tmpfile);
-    if (subscription_user_agent != "")
+    if (last_download_status == 6)
+        log_message("Subscription download failed for rule '" + section_name_value + "' because the subscription host could not be resolved", "error");
+    else if (subscription_user_agent != "")
         log_message("Configured subscription request profile for rule '" + section_name_value + "' did not produce valid proxy entries", "error");
     else
         log_message("No compatible subscription request profile produced valid proxy entries for rule '" + section_name_value + "'", "error");
