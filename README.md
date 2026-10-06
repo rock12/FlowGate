@@ -47,7 +47,7 @@ sh <(wget -O - https://raw.githubusercontent.com/rock12/forkop/main/install.sh)
 
 #### Что сделает скрипт автоматически:
 1. Определит архитектуру процессора роутера и версию OpenWrt (24.10 с `opkg` или 25.x с `apk`).
-2. Установит все необходимые системные пакеты (`ucode`, `nftables`, `traceroute`, `iputils-ping` и модули ядра TProxy/TUN).
+2. Установит все необходимые системные пакеты (`ucode`, `nftables`, `traceroute`, `iputils-ping` и модули ядра TProxy/TUN/Queue).
 3. Скачает и установит бинарный файл `udpspeeder` (`speederv2`).
 4. Загрузит и установит актуальные пакеты FlowGate и русский интерфейс LuCI.
 5. Отключит конфликтующий Flow Offloading и утечки IPv6.

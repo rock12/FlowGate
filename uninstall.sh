@@ -196,47 +196,34 @@ CURRENT_STEP=$((CURRENT_STEP + 1))
 # ─── STEP 2: Stop Services & Daemons ─────────────────────────────────────────
 tui_step "$CURRENT_STEP" "$TOTAL_STEPS" "Остановка служб и фоновых процессов..."
 
-# 1. Immediately disable autostart symlinks so nothing can respawn
-if [ -f "/etc/init.d/forkop" ]; then
-    /etc/init.d/forkop disable >/dev/null 2>&1 || true
-fi
-rm -f /etc/rc.d/*forkop* 2>/dev/null || true
-
-if [ -f "/etc/init.d/sing-box" ]; then
-    if grep -q "Forkop managed sing-box" "/etc/init.d/sing-box" 2>/dev/null; then
-        /etc/init.d/sing-box disable >/dev/null 2>&1 || true
-        rm -f /etc/rc.d/*sing-box* /etc/init.d/sing-box 2>/dev/null || true
-    fi
-fi
-
-# 2. Tell procd to stop tracking/respawning services immediately
-if command -v ubus >/dev/null 2>&1; then
-    ubus call service delete '{"name": "forkop"}' >/dev/null 2>&1 || true
-    if [ -f "/etc/init.d/sing-box" ] && grep -q "Forkop managed sing-box" "/etc/init.d/sing-box" 2>/dev/null; then
-        ubus call service delete '{"name": "sing-box"}' >/dev/null 2>&1 || true
-    fi
-fi
-
-# 3. Clean up lock files and lock directories
+# 1. Immediately clean up procd lock files to release any stuck flocks
+rm -f /tmp/lock/procd_forkop* /tmp/lock/*sing-box* 2>/dev/null || true
 rm -rf /var/run/forkop*.lock /tmp/forkop*.lock /var/run/forkop/ui-state/*.lock /var/run/forkop/*.lock 2>/dev/null || true
 rm -f /var/run/forkop/start*.pid /var/run/forkop/start.retry 2>/dev/null || true
 
-# 4. Attempt bounded graceful stop (max 4 seconds)
-if [ -x "/etc/init.d/forkop" ]; then
-    run_with_timeout 4 /etc/init.d/forkop stop || true
+# 2. Immediately remove autostart symlinks directly (never hang on rc.common flock)
+rm -f /etc/rc.d/*forkop* /etc/rc.d/*sing-box* 2>/dev/null || true
+if [ -f "/etc/init.d/sing-box" ] && grep -q "Forkop managed sing-box" "/etc/init.d/sing-box" 2>/dev/null; then
+    rm -f "/etc/init.d/sing-box" 2>/dev/null || true
 fi
 
-# 5. Forcefully kill all proxy, DPI, speeder and ucode workers
+# 3. Tell procd to stop tracking/respawning services immediately
+if command -v ubus >/dev/null 2>&1; then
+    ubus call service delete '{"name": "forkop"}' >/dev/null 2>&1 || true
+    ubus call service delete '{"name": "sing-box"}' >/dev/null 2>&1 || true
+fi
+
+# 4. Forcefully kill all proxy, DPI, speeder and worker processes
 killall -9 sing-box 2>/dev/null || true
 killall -9 udpspeeder speederv2 nfqws nfqws2 ciadpi 2>/dev/null || true
 
-# Terminate any running ucode processes executing forkop modules
+# Terminate any running processes executing forkop or flock
 for _pdir in /proc/[0-9]*; do
     [ -d "$_pdir" ] || continue
     _p="${_pdir##*/}"
     [ "$_p" = "$$" ] && continue
     if [ -r "$_pdir/cmdline" ]; then
-        if tr '\0' ' ' < "$_pdir/cmdline" 2>/dev/null | grep -q "forkop"; then
+        if tr '\0' ' ' < "$_pdir/cmdline" 2>/dev/null | grep -E -q "forkop|procd_forkop"; then
             kill -9 "$_p" 2>/dev/null || true
         fi
     fi
