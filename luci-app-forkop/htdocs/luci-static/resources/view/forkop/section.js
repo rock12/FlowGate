@@ -8548,10 +8548,17 @@ function createSectionContent(section) {
         if (!response || (response.code ?? 0) !== 0 || !response.stdout) {
           setState("error", _("Error"));
           resetAfter(2500);
+          let errDetail = response?.stderr;
+          if (!errDetail && response?.stdout) {
+            try {
+              const d = JSON.parse(response.stdout);
+              if (d && d.message) errDetail = d.message;
+            } catch (e) {}
+          }
           showStatusModal(
             _("Error"),
             _("Failed to generate WARP config: ") +
-              (response?.stderr || "Unknown error"),
+              (errDetail || "Unknown error"),
             true,
           );
           return;
