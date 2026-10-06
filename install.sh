@@ -1347,22 +1347,19 @@ dnsmasq_failsafe_restore = function() {
 };
 
 function release_version_valid(value) {
-    let v = replace(as_string(value), /^v/i, "");
-    return match(v, /^[0-9]+(\.[0-9]+)+(-[a-zA-Z0-9.]+)?$/) != null;
+    return match(as_string(value), /^[0-9]+[.][0-9]+[.][0-9]+$/) != null;
 }
 
 function asset_matches(name, kind, ext, version) {
-    version = replace(as_string(version), /^v/i, "");
-    name = as_string(name);
     if (!release_version_valid(version))
         return false;
 
     if (kind == "backend")
-        return name == "forkop_" + version + "." + ext || name == "forkop_" + version + "_all." + ext;
+        return name == "forkop_" + version + "." + ext;
     if (kind == "app")
-        return name == "luci-app-forkop_" + version + "." + ext || name == "luci-app-forkop_" + version + "_all." + ext;
+        return name == "luci-app-forkop_" + version + "." + ext;
     if (kind == "i18n")
-        return name == "luci-i18n-forkop-ru_" + version + "." + ext || name == "luci-i18n-forkop-ru_" + version + "_all." + ext;
+        return name == "luci-i18n-forkop-ru_" + version + "." + ext;
     return false;
 }
 

@@ -696,7 +696,7 @@ function valid_port(port) {
 
 function is_dummy_server(host, port) {
     host = lc(trim(as_string(host)));
-    if (host == "" || host == "0.0.0.0" || host == "127.0.0.1" || host == "localhost" || host == "::" || host == "::1")
+    if (host == "" || host == "0.0.0.0" || host == "::")
         return true;
     return false;
 }

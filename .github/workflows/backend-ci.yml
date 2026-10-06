@@ -69,7 +69,8 @@ jobs:
             echo "$output"
             echo "::endgroup::"
             if [ $status -ne 0 ]; then
-              echo "::error file=$test_file::Test failed with exit code $status"
+              err_summary=$(echo "$output" | tail -n 5 | tr '\r\n' '  ')
+              echo "::error file=$test_file::Test failed (exit $status): $err_summary"
               echo "### ❌ Failed: \`$test_file\` (exit $status)" >> "$GITHUB_STEP_SUMMARY"
               echo '```' >> "$GITHUB_STEP_SUMMARY"
               echo "$output" >> "$GITHUB_STEP_SUMMARY"
