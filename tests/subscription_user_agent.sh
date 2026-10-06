@@ -26,20 +26,22 @@ assert_file() {
 }
 
 default_ua="sing-box/1.12.0"
-default_candidates="$(printf '%s\n%s\n%s\n%s\n%s\n%s' \
+default_candidates="$(printf '%s\n%s\n%s\n%s\n%s\n%s\n%s' \
   "$default_ua" \
   Happ \
   v2rayN \
   v2rayNG \
   Mihomo \
-  Clash.Meta)"
-preferred_candidates="$(printf '%s\n%s\n%s\n%s\n%s\n%s' \
+  Clash.Meta \
+  ClashMeta)"
+preferred_candidates="$(printf '%s\n%s\n%s\n%s\n%s\n%s\n%s' \
   "$default_ua" \
   Mihomo \
   Happ \
   v2rayN \
   v2rayNG \
-  Clash.Meta)"
+  Clash.Meta \
+  ClashMeta)"
 
 cache_ucode() {
   ucode -L "$FORKOP_LIB" "$CACHE_UC" "$@"
