@@ -36,16 +36,16 @@ SDK_DIR="${SDK_DIR:-$SDK_CACHE_DIR/extracted}"
 IPK_SDK_URL="${IPK_SDK_URL:-https://downloads.openwrt.org/releases/24.10.6/targets/x86/64/openwrt-sdk-24.10.6-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst}"
 APK_SDK_URL="${APK_SDK_URL:-https://downloads.openwrt.org/releases/25.12.3/targets/x86/64/openwrt-sdk-25.12.3-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst}"
 
-BACKEND_DESCRIPTION="Rule-based Forkop backend with hybrid sing-box + zapret orchestration"
-APP_DESCRIPTION="Rule-based Forkop LuCI app with hybrid sing-box + zapret orchestration"
-I18N_DESCRIPTION="Translation for luci-app-forkop - Русский (Russian)"
+BACKEND_DESCRIPTION="Rule-based FlowGate backend with hybrid sing-box + zapret orchestration"
+APP_DESCRIPTION="Rule-based FlowGate LuCI app with hybrid sing-box + zapret orchestration"
+I18N_DESCRIPTION="Translation for luci-app-flowgate - Русский (Russian)"
 MAINTAINER="ushan0v <ushan0v@users.noreply.github.com>"
 PROJECT_URL="https://github.com/rock12/flowgate"
 BACKEND_DEPENDS_IPK="libc, ca-bundle, kmod-inet-diag, kmod-netlink-diag, kmod-tun, curl, ucode, ucode-mod-fs, ucode-mod-uci, kmod-nft-tproxy, coreutils-base64, bind-dig, nftables, kmod-nft-nat, ip-full, kmod-nft-queue"
 BACKEND_DEPENDS_APK="bind-dig ca-bundle coreutils-base64 curl ip-full kmod-inet-diag kmod-netlink-diag kmod-nft-nat kmod-nft-queue kmod-nft-tproxy kmod-tun libc nftables ucode ucode-mod-fs ucode-mod-uci !https-dns-proxy !nextdns !luci-app-passwall !luci-app-passwall2"
 BACKEND_CONFLICTS_IPK="https-dns-proxy, nextdns, luci-app-passwall, luci-app-passwall2"
-APP_DEPENDS_IPK="libc, luci-base, forkop"
-APP_DEPENDS_APK="libc luci-base forkop"
+APP_DEPENDS_IPK="libc, luci-base, flowgate"
+APP_DEPENDS_APK="libc luci-base flowgate"
 
 ensure_host_deps() {
   local missing=()
@@ -170,8 +170,11 @@ build_backend_root() {
   make_dir "$output_root/usr/lib/forkop"
 
   install -m 0755 "$ROOT_DIR/forkop/files/etc/init.d/forkop" "$output_root/etc/init.d/forkop"
+  ln -sf forkop "$output_root/etc/init.d/flowgate"
   install -m 0644 "$ROOT_DIR/forkop/files/etc/config/forkop" "$output_root/etc/config/forkop"
+  ln -sf forkop "$output_root/etc/config/flowgate"
   install -m 0755 "$ROOT_DIR/forkop/files/usr/bin/forkop" "$output_root/usr/bin/forkop"
+  ln -sf forkop "$output_root/usr/bin/flowgate"
   cp -a "$ROOT_DIR/forkop/files/usr/lib/." "$output_root/usr/lib/forkop/"
 
   sed -i -e "s/__COMPILED_VERSION_VARIABLE__/${RELEASE_VERSION}/g" \
@@ -199,17 +202,18 @@ build_app_root() {
 build_i18n_root() {
   local output_root="$1"
   local po2lmo_bin="$2"
-  local lmo_path="$output_root/usr/lib/lua/luci/i18n/forkop.ru.lmo"
+  local lmo_path="$output_root/usr/lib/lua/luci/i18n/flowgate.ru.lmo"
 
   rm -rf "$output_root"
   make_dir "$output_root/etc/uci-defaults"
   make_dir "$(dirname "$lmo_path")"
 
-  cat > "$output_root/etc/uci-defaults/luci-i18n-forkop-ru" <<'EOF'
+  cat > "$output_root/etc/uci-defaults/luci-i18n-flowgate-ru" <<'EOF'
 uci set luci.languages.ru='Русский (Russian)'; uci commit luci
 EOF
 
   "$po2lmo_bin" "$ROOT_DIR/luci-app-forkop/po/ru/forkop.po" "$lmo_path"
+  ln -sf "flowgate.ru.lmo" "$output_root/usr/lib/lua/luci/i18n/forkop.ru.lmo"
 
   normalize_package_root_modes "$output_root"
   find "$output_root/etc/uci-defaults" -type f -exec chmod 0755 {} + 2>/dev/null || true
@@ -250,8 +254,10 @@ write_backend_ipk_control() {
   make_dir "$control_dir"
 
   cat > "$control_dir/control" <<EOF
-Package: forkop
+Package: flowgate
 Version: ${RELEASE_VERSION}
+Provides: forkop
+Replaces: forkop
 Depends: ${BACKEND_DEPENDS_IPK}
 Conflicts: ${BACKEND_CONFLICTS_IPK}
 License: GPL-2.0-or-later
@@ -294,8 +300,10 @@ write_app_ipk_control() {
   make_dir "$control_dir"
 
   cat > "$control_dir/control" <<EOF
-Package: luci-app-forkop
+Package: luci-app-flowgate
 Version: ${RELEASE_VERSION}
+Provides: luci-app-forkop
+Replaces: luci-app-forkop
 Depends: ${APP_DEPENDS_IPK}
 License: GPL-2.0-or-later
 Section: luci
@@ -332,9 +340,11 @@ write_i18n_ipk_control() {
   make_dir "$control_dir"
 
   cat > "$control_dir/control" <<EOF
-Package: luci-i18n-forkop-ru
+Package: luci-i18n-flowgate-ru
 Version: ${RELEASE_VERSION}
-Depends: libc, luci-app-forkop
+Provides: luci-i18n-forkop-ru
+Replaces: luci-i18n-forkop-ru
+Depends: libc, luci-app-flowgate
 License: GPL-2.0-or-later
 Section: luci
 URL: ${PROJECT_URL}
@@ -453,7 +463,7 @@ EOF
 [ -s ${IPKG_INSTROOT}/lib/functions.sh ] || exit 0
 . ${IPKG_INSTROOT}/lib/functions.sh
 export root="${IPKG_INSTROOT}"
-export pkgname="luci-app-forkop"
+export pkgname="luci-app-flowgate"
 add_group_and_user
 default_postinst
 EOF
@@ -463,7 +473,7 @@ EOF
 [ -s ${IPKG_INSTROOT}/lib/functions.sh ] || exit 0
 . ${IPKG_INSTROOT}/lib/functions.sh
 export root="${IPKG_INSTROOT}"
-export pkgname="luci-app-forkop"
+export pkgname="luci-app-flowgate"
 default_prerm
 exit 0
 EOF
@@ -480,7 +490,7 @@ export PKG_UPGRADE=1
 [ -s ${IPKG_INSTROOT}/lib/functions.sh ] || exit 0
 . ${IPKG_INSTROOT}/lib/functions.sh
 export root="${IPKG_INSTROOT}"
-export pkgname="luci-app-forkop"
+export pkgname="luci-app-flowgate"
 add_group_and_user
 default_postinst
 EOF
@@ -504,7 +514,7 @@ EOF
 [ -s ${IPKG_INSTROOT}/lib/functions.sh ] || exit 0
 . ${IPKG_INSTROOT}/lib/functions.sh
 export root="${IPKG_INSTROOT}"
-export pkgname="luci-i18n-forkop-ru"
+export pkgname="luci-i18n-flowgate-ru"
 add_group_and_user
 default_postinst
 EOF
@@ -514,7 +524,7 @@ EOF
 [ -s ${IPKG_INSTROOT}/lib/functions.sh ] || exit 0
 . ${IPKG_INSTROOT}/lib/functions.sh
 export root="${IPKG_INSTROOT}"
-export pkgname="luci-i18n-forkop-ru"
+export pkgname="luci-i18n-flowgate-ru"
 default_prerm
 EOF
 
@@ -530,7 +540,7 @@ export PKG_UPGRADE=1
 [ -s ${IPKG_INSTROOT}/lib/functions.sh ] || exit 0
 . ${IPKG_INSTROOT}/lib/functions.sh
 export root="${IPKG_INSTROOT}"
-export pkgname="luci-i18n-forkop-ru"
+export pkgname="luci-i18n-flowgate-ru"
 add_group_and_user
 default_postinst
 EOF
@@ -551,6 +561,8 @@ build_apk_package() {
   local temp_root="$BUILD_DIR/manual/${package_name}.apk-root"
   local temp_scripts="$BUILD_DIR/manual/${package_name}.apk-scripts"
   local maintainer="${10}"
+  local replaces="${11:-}"
+  local provides="${12:-}"
 
   rm -rf "$temp_root" "$temp_scripts"
   cp -a "$files_root" "$temp_root"
@@ -569,10 +581,12 @@ build_apk_package() {
     -I "description:${description}" \
     -I "arch:noarch" \
     -I "license:GPL-2.0-or-later" \
-    -I "origin:forkop" \
+    -I "origin:flowgate" \
     -I "maintainer:${maintainer}" \
     -I "url:${PROJECT_URL}" \
     -I "depends:${depends}" \
+    ${replaces:+-I "replaces:${replaces}"} \
+    ${provides:+-I "provides:${provides}"} \
     -s "pre-install:${temp_scripts}/${script_prefix}-pre-install.sh" \
     -s "post-install:${temp_scripts}/${script_prefix}-post-install.sh" \
     -s "pre-deinstall:${temp_scripts}/${script_prefix}-pre-deinstall.sh" \
@@ -591,7 +605,7 @@ verify_ipk_metadata() {
   tar -xzf "$tmp_dir/control.tar.gz" -C "$tmp_dir"
   grep -q "^Package: ${expected_package}$" "$tmp_dir/control"
   grep -q "^Version: ${expected_version}$" "$tmp_dir/control"
-  if [[ "$expected_package" == "forkop" ]]; then
+  if [[ "$expected_package" == "flowgate" || "$expected_package" == "forkop" ]]; then
     grep -q "^Conflicts: ${BACKEND_CONFLICTS_IPK}$" "$tmp_dir/control"
   fi
   rm -rf "$tmp_dir"
@@ -608,7 +622,7 @@ verify_apk_metadata() {
   "$apk_bin" adbdump "$package_file" > "$dump_file"
   grep -q "^  name: ${expected_package}$" "$dump_file"
   grep -q "^  version: ${expected_version}$" "$dump_file"
-  if [[ "$expected_package" == "forkop" ]]; then
+  if [[ "$expected_package" == "flowgate" || "$expected_package" == "forkop" ]]; then
     for conflict in https-dns-proxy nextdns luci-app-passwall luci-app-passwall2; do
       grep -q "^[[:space:]]*- '!${conflict}'$" "$dump_file"
     done
@@ -660,7 +674,8 @@ main() {
   fi
   output_dir="$OUTPUT_DIR"
   mkdir -p "$output_dir"
-  rm -f "$output_dir"/forkop_* "$output_dir"/luci-app-forkop_* "$output_dir"/luci-i18n-forkop-ru_*
+  rm -f "$output_dir"/forkop_* "$output_dir"/luci-app-forkop_* "$output_dir"/luci-i18n-forkop-ru_* \
+        "$output_dir"/flowgate_* "$output_dir"/luci-app-flowgate_* "$output_dir"/luci-i18n-flowgate-ru_*
 
   ipk_archive="$(download_sdk_archive "$IPK_SDK_URL")"
   apk_archive="$(download_sdk_archive "$APK_SDK_URL")"
@@ -687,74 +702,80 @@ main() {
 
   build_ipk_package \
     "$ipkg_build_bin" \
-    "forkop" \
+    "flowgate" \
     "$backend_root" \
     "$backend_control" \
-    "$output_dir/forkop_${RELEASE_VERSION}.ipk"
+    "$output_dir/flowgate_${RELEASE_VERSION}.ipk"
 
   build_ipk_package \
     "$ipkg_build_bin" \
-    "luci-app-forkop" \
+    "luci-app-flowgate" \
     "$app_root" \
     "$app_control" \
-    "$output_dir/luci-app-forkop_${RELEASE_VERSION}.ipk"
+    "$output_dir/luci-app-flowgate_${RELEASE_VERSION}.ipk"
 
   build_ipk_package \
     "$ipkg_build_bin" \
-    "luci-i18n-forkop-ru" \
+    "luci-i18n-flowgate-ru" \
     "$i18n_root" \
     "$i18n_control" \
-    "$output_dir/luci-i18n-forkop-ru_${RELEASE_VERSION}.ipk"
+    "$output_dir/luci-i18n-flowgate-ru_${RELEASE_VERSION}.ipk"
 
-  generate_apk_metadata_files "forkop" "$backend_root" "/etc/config/forkop"
-  generate_apk_metadata_files "luci-app-forkop" "$app_root"
-  generate_apk_metadata_files "luci-i18n-forkop-ru" "$i18n_root"
+  generate_apk_metadata_files "flowgate" "$backend_root" "/etc/config/forkop"
+  generate_apk_metadata_files "luci-app-flowgate" "$app_root"
+  generate_apk_metadata_files "luci-i18n-flowgate-ru" "$i18n_root"
   write_backend_apk_scripts "$apk_scripts"
   write_app_apk_scripts "$apk_scripts"
   write_i18n_apk_scripts "$apk_scripts"
 
   build_apk_package \
     "$apk_bin" \
-    "forkop" \
+    "flowgate" \
     "$APK_INTERNAL_VERSION" \
     "$BACKEND_DESCRIPTION" \
     "$BACKEND_DEPENDS_APK" \
     "$backend_root" \
     "$apk_scripts" \
     "backend" \
-    "$output_dir/forkop_${RELEASE_VERSION}.apk" \
-    "$MAINTAINER"
+    "$output_dir/flowgate_${RELEASE_VERSION}.apk" \
+    "$MAINTAINER" \
+    "forkop" \
+    "forkop"
 
   build_apk_package \
     "$apk_bin" \
-    "luci-app-forkop" \
+    "luci-app-flowgate" \
     "$APK_INTERNAL_VERSION" \
     "$APP_DESCRIPTION" \
     "$APP_DEPENDS_APK" \
     "$app_root" \
     "$apk_scripts" \
     "app" \
-    "$output_dir/luci-app-forkop_${RELEASE_VERSION}.apk" \
-    "$MAINTAINER"
+    "$output_dir/luci-app-flowgate_${RELEASE_VERSION}.apk" \
+    "$MAINTAINER" \
+    "luci-app-forkop" \
+    "luci-app-forkop"
 
   build_apk_package \
     "$apk_bin" \
-    "luci-i18n-forkop-ru" \
+    "luci-i18n-flowgate-ru" \
     "$APK_INTERNAL_VERSION" \
     "$I18N_DESCRIPTION" \
-    "libc luci-app-forkop" \
+    "libc luci-app-flowgate" \
     "$i18n_root" \
     "$apk_scripts" \
     "i18n" \
-    "$output_dir/luci-i18n-forkop-ru_${RELEASE_VERSION}.apk" \
-    "$MAINTAINER"
+    "$output_dir/luci-i18n-flowgate-ru_${RELEASE_VERSION}.apk" \
+    "$MAINTAINER" \
+    "luci-i18n-forkop-ru" \
+    "luci-i18n-forkop-ru"
 
-  verify_ipk_metadata "$output_dir/forkop_${RELEASE_VERSION}.ipk" "forkop" "$RELEASE_VERSION"
-  verify_ipk_metadata "$output_dir/luci-app-forkop_${RELEASE_VERSION}.ipk" "luci-app-forkop" "$RELEASE_VERSION"
-  verify_ipk_metadata "$output_dir/luci-i18n-forkop-ru_${RELEASE_VERSION}.ipk" "luci-i18n-forkop-ru" "$RELEASE_VERSION"
-  verify_apk_metadata "$apk_bin" "$output_dir/forkop_${RELEASE_VERSION}.apk" "forkop" "$APK_INTERNAL_VERSION"
-  verify_apk_metadata "$apk_bin" "$output_dir/luci-app-forkop_${RELEASE_VERSION}.apk" "luci-app-forkop" "$APK_INTERNAL_VERSION"
-  verify_apk_metadata "$apk_bin" "$output_dir/luci-i18n-forkop-ru_${RELEASE_VERSION}.apk" "luci-i18n-forkop-ru" "$APK_INTERNAL_VERSION"
+  verify_ipk_metadata "$output_dir/flowgate_${RELEASE_VERSION}.ipk" "flowgate" "$RELEASE_VERSION"
+  verify_ipk_metadata "$output_dir/luci-app-flowgate_${RELEASE_VERSION}.ipk" "luci-app-flowgate" "$RELEASE_VERSION"
+  verify_ipk_metadata "$output_dir/luci-i18n-flowgate-ru_${RELEASE_VERSION}.ipk" "luci-i18n-flowgate-ru" "$RELEASE_VERSION"
+  verify_apk_metadata "$apk_bin" "$output_dir/flowgate_${RELEASE_VERSION}.apk" "flowgate" "$APK_INTERNAL_VERSION"
+  verify_apk_metadata "$apk_bin" "$output_dir/luci-app-flowgate_${RELEASE_VERSION}.apk" "luci-app-flowgate" "$APK_INTERNAL_VERSION"
+  verify_apk_metadata "$apk_bin" "$output_dir/luci-i18n-flowgate-ru_${RELEASE_VERSION}.apk" "luci-i18n-flowgate-ru" "$APK_INTERNAL_VERSION"
 
   cleanup_work_dir
   print_summary "$output_dir"

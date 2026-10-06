@@ -6753,7 +6753,7 @@ async function renderServicesInfoWidget() {
     title: _("Services info"),
     items: [
       {
-        key: "Forkop",
+        key: "FlowGate",
         value: servicesInfoWidget.data.forkopRunning ? _("\u2714 Running") : _("\u2718 Stopped"),
         attributes: {
           class: servicesInfoWidget.data.forkopRunning ? "fkp_dashboard-page__widgets-section__item__row--success" : "fkp_dashboard-page__widgets-section__item__row--error"
@@ -9199,7 +9199,7 @@ function renderWikiDisclaimer(kind) {
       classNames: ["cbi-button-save"],
       text: _("Open Project Page"),
       onClick: () => window.open(
-        "https://github.com/ushan0v/forkop#readme",
+        "https://github.com/rock12/flowgate#readme",
         "_blank",
         "noopener,noreferrer"
       )
@@ -10341,7 +10341,7 @@ function renderDiagnosticSystemInfoWidget() {
   const container = document.getElementById("fkp_diagnostic-page-system-info");
   const items = [
     {
-      key: "Forkop",
+      key: "FlowGate",
       value: normalizeCompiledVersion(diagnosticsSystemInfo.forkop_version)
     },
     {

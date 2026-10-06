@@ -196,6 +196,9 @@ printf '%s\n' '{"tag_name":"0.0.1"}' | ucode "$helper" release-tag | grep -Fxq '
 release_json='{"tag_name":"0.0.1","assets":[{"name":"forkop_0.0.1.ipk","browser_download_url":"https://example.com/forkop.ipk"}]}'
 printf '%s' "$release_json" | ucode "$helper" release-asset-url backend ipk | grep -Fxq 'https://example.com/forkop.ipk' ||
   fail "embedded helper must resolve the exact three-part Forkop package name"
+flowgate_release_json='{"tag_name":"0.0.1","assets":[{"name":"flowgate_0.0.1.ipk","browser_download_url":"https://example.com/flowgate.ipk"}]}'
+printf '%s' "$flowgate_release_json" | ucode "$helper" release-asset-url backend ipk | grep -Fxq 'https://example.com/flowgate.ipk' ||
+  fail "embedded helper must resolve the exact three-part FlowGate package name"
 if printf '%s' '{"tag_name":"0.0.1","assets":[{"name":"forkop_0.0.1_all.ipk","browser_download_url":"https://example.com/old.ipk"}]}' |
   ucode "$helper" release-asset-url backend ipk | grep -q .; then
   fail "embedded helper must reject package names outside the Forkop release format"

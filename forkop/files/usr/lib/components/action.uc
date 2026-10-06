@@ -1850,14 +1850,14 @@ function check_forkop() {
     if (status == "")
         action_fail("forkop", "check_update", "Failed to compare Forkop versions", FORKOP_VERSION, latest_version);
     if (status == "latest") {
-        updates_log("Forkop is already up to date (" + FORKOP_VERSION + ")");
+        updates_log("FlowGate is already up to date (" + FORKOP_VERSION + ")");
         action_success("forkop", "check_update", "Latest version is installed", FORKOP_VERSION, latest_version, 0, status, release_url);
     }
     if (status == "outdated") {
-        updates_log("Forkop update found: " + FORKOP_VERSION + " -> " + latest_version);
+        updates_log("FlowGate update found: " + FORKOP_VERSION + " -> " + latest_version);
         action_success("forkop", "check_update", "Update is available", FORKOP_VERSION, latest_version, 0, status, release_url);
     }
-    updates_log("Forkop installed version is newer than upstream release: " + FORKOP_VERSION + " -> " + latest_version);
+    updates_log("FlowGate installed version is newer than upstream release: " + FORKOP_VERSION + " -> " + latest_version);
     action_success("forkop", "check_update", "Installed version is newer than release", FORKOP_VERSION, latest_version, 0, status, release_url);
 }
 
@@ -1866,7 +1866,7 @@ function resolve_forkop_release(latest_version) {
     if (release_json == "")
         return null;
     let asset_ext = is_apk() ? "apk" : "ipk";
-    let i18n_required = pkg_is_installed("luci-i18n-forkop-ru") ? "1" : "0";
+    let i18n_required = (pkg_is_installed("luci-i18n-flowgate-ru") || pkg_is_installed("luci-i18n-forkop-ru")) ? "1" : "0";
     let plan = trim(helper_output_input(release_json, "forkop-release-plan", [ latest_version, asset_ext, i18n_required ]));
     let fields = split(plan, "\t");
     if (length(fields) < 7 || as_string(fields[1]) == "" || as_string(fields[2]) == "" || as_string(fields[3]) == "" || as_string(fields[4]) == "")
@@ -1887,14 +1887,14 @@ function install_forkop() {
     if (latest_version == "")
         latest_version = "unknown";
     if (latest_version == "unknown")
-        action_fail("forkop", "install", "Failed to resolve Forkop release", FORKOP_VERSION, latest_version);
+        action_fail("forkop", "install", "Failed to resolve FlowGate release", FORKOP_VERSION, latest_version);
 
     write_forkop_latest_version_cache(latest_version, now_seconds());
     init_tmp_dir() || action_fail("forkop", "install", "Failed to create temporary directory", FORKOP_VERSION, latest_version);
-    updates_log("Resolving Forkop release " + latest_version + " packages");
+    updates_log("Resolving FlowGate release " + latest_version + " packages");
     let release = resolve_forkop_release(latest_version);
     if (release == null)
-        action_fail("forkop", "install", "Failed to resolve Forkop release packages", FORKOP_VERSION, latest_version);
+        action_fail("forkop", "install", "Failed to resolve FlowGate release packages", FORKOP_VERSION, latest_version);
 
     let backend_file = tmp_dir + "/" + release.backend_name;
     let app_file = tmp_dir + "/" + release.app_name;
@@ -1902,14 +1902,14 @@ function install_forkop() {
     if (!download_with_retry(release.backend_url, backend_file, release.backend_name) ||
         !download_with_retry(release.app_url, app_file, release.app_name) ||
         (release.i18n_url != "" && !download_with_retry(release.i18n_url, i18n_file, release.i18n_name)))
-        action_fail("forkop", "install", "Failed to download Forkop release packages", FORKOP_VERSION, latest_version);
+        action_fail("forkop", "install", "Failed to download FlowGate release packages", FORKOP_VERSION, latest_version);
 
     if (!run_logged("Installing LuCI app package " + release.app_name, pkg_install_files_command([ app_file ])))
         action_fail("forkop", "install", "Failed to install LuCI app package", FORKOP_VERSION, latest_version);
     if (i18n_file != "" && !run_logged("Installing LuCI Russian i18n package " + release.i18n_name, pkg_install_files_command([ i18n_file ])))
         action_fail("forkop", "install", "Failed to install LuCI Russian i18n package", FORKOP_VERSION, latest_version);
-    if (!run_logged("Installing Forkop package " + release.backend_name, pkg_install_files_command([ backend_file ])))
-        action_fail("forkop", "install", "Failed to install Forkop package", FORKOP_VERSION, latest_version);
+    if (!run_logged("Installing FlowGate package " + release.backend_name, pkg_install_files_command([ backend_file ])))
+        action_fail("forkop", "install", "Failed to install FlowGate package", FORKOP_VERSION, latest_version);
 
     remove_file("/var/luci-indexcache");
     command_success("rm -f /var/luci-indexcache* /tmp/luci-indexcache* 2>/dev/null");
@@ -1920,11 +1920,13 @@ function install_forkop() {
 
     restart_forkop_after_successful_change();
     clear_version_caches();
-    let new_version = installed_package_version("forkop");
+    let new_version = installed_package_version("flowgate");
+    if (new_version == "")
+        new_version = installed_package_version("forkop");
     if (new_version == "")
         new_version = latest_version;
-    updates_log("Forkop updated to " + new_version);
-    action_success("forkop", "install", "Forkop has been installed", new_version, latest_version, 1, "latest", release.release_url);
+    updates_log("FlowGate updated to " + new_version);
+    action_success("forkop", "install", "FlowGate has been installed", new_version, latest_version, 1, "latest", release.release_url);
 }
 
 function dispatch_sing_box(action) {

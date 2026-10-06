@@ -1650,7 +1650,7 @@ async function renderServicesInfoWidget() {
     title: _('Services info'),
     items: [
       {
-        key: 'Forkop',
+        key: 'FlowGate',
         value: servicesInfoWidget.data.forkopRunning
           ? _('✔ Running')
           : _('✘ Stopped'),

@@ -320,6 +320,24 @@ assert_eq "$(printf 'https://example.com/release\tforkop_1.2.3.ipk\thttps://exam
 assert_eq "$(printf 'https://example.com/release\tforkop_1.2.3.ipk\thttps://example.com/backend.ipk\tluci-app-forkop_1.2.3.ipk\thttps://example.com/app.ipk\t\t')" \
   "$(printf '%s' "$release_json" | ucode "$UPDATER" forkop-release-plan 1.2.3 ipk 0)" \
   "forkop release plan without i18n"
+
+flowgate_release_json="$(cat <<'JSON'
+{
+  "tag_name": "1.2.3",
+  "html_url": "https://example.com/release",
+  "assets": [
+    {"name": "flowgate_1.2.3.ipk", "browser_download_url": "https://example.com/backend.ipk"},
+    {"name": "luci-app-flowgate_1.2.3.ipk", "browser_download_url": "https://example.com/app.ipk"},
+    {"name": "luci-i18n-flowgate-ru_1.2.3.ipk", "browser_download_url": "https://example.com/i18n.ipk"}
+  ]
+}
+JSON
+)"
+
+assert_eq "$(printf 'https://example.com/release\tflowgate_1.2.3.ipk\thttps://example.com/backend.ipk\tluci-app-flowgate_1.2.3.ipk\thttps://example.com/app.ipk\tluci-i18n-flowgate-ru_1.2.3.ipk\thttps://example.com/i18n.ipk')" \
+  "$(printf '%s' "$flowgate_release_json" | ucode "$UPDATER" forkop-release-plan 1.2.3 ipk 1)" \
+  "flowgate release plan with i18n"
+
 if printf '%s' "$release_json" | ucode "$UPDATER" forkop-release-plan 9.9.9 ipk 0 >/dev/null 2>&1; then
   fail "forkop release plan should reject tag mismatch"
 fi

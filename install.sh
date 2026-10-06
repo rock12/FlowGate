@@ -1067,6 +1067,10 @@ function installer_cleanup_legacy() {
         packages_removed = false;
     if (!installer_remove_package("luci-app-forkop"))
         packages_removed = false;
+    if (!installer_remove_package_prefix("luci-i18n-flowgate"))
+        packages_removed = false;
+    if (!installer_remove_package("luci-app-flowgate"))
+        packages_removed = false;
 
     if (!packages_removed) {
         warn("Failed to remove one or more conflicting or legacy packages.\n");
@@ -1355,11 +1359,11 @@ function asset_matches(name, kind, ext, version) {
         return false;
 
     if (kind == "backend")
-        return name == "forkop_" + version + "." + ext;
+        return name == "flowgate_" + version + "." + ext || name == "forkop_" + version + "." + ext;
     if (kind == "app")
-        return name == "luci-app-forkop_" + version + "." + ext;
+        return name == "luci-app-flowgate_" + version + "." + ext || name == "luci-app-forkop_" + version + "." + ext;
     if (kind == "i18n")
-        return name == "luci-i18n-forkop-ru_" + version + "." + ext;
+        return name == "luci-i18n-flowgate-ru_" + version + "." + ext || name == "luci-i18n-forkop-ru_" + version + "." + ext;
     return false;
 }
 
@@ -1384,10 +1388,21 @@ function release_asset_url(kind, ext) {
     let version = replace(as_string(release.tag_name || ""), /^v/i, "");
     if (!release_version_valid(version))
         return;
-    for (let asset in release.assets) {
-        if (type(asset) == "object" && asset_matches(asset.name, kind, ext, version)) {
-            print(as_string(asset.browser_download_url || ""), "\n");
-            return;
+
+    let prefixes = {
+        backend: [ "flowgate_", "forkop_" ],
+        app: [ "luci-app-flowgate_", "luci-app-forkop_" ],
+        i18n: [ "luci-i18n-flowgate-ru_", "luci-i18n-forkop-ru_" ]
+    };
+
+    let pfx_list = prefixes[kind] || [];
+    for (let pfx in pfx_list) {
+        let expected = pfx + version + "." + ext;
+        for (let asset in release.assets) {
+            if (type(asset) == "object" && asset.name == expected) {
+                print(as_string(asset.browser_download_url || ""), "\n");
+                return;
+            }
         }
     }
 }
@@ -1695,7 +1710,7 @@ detect_installer_language() {
     luci_lang="$(get_luci_main_lang)"
 
     INSTALLER_LANG="en"
-    if pkg_is_installed "luci-i18n-forkop-ru"; then
+    if pkg_is_installed "luci-i18n-flowgate-ru" || pkg_is_installed "luci-i18n-forkop-ru"; then
         INSTALLER_LANG="ru"
         return 0
     fi
@@ -1772,24 +1787,24 @@ resolve_forkop_release() {
 
     FORKOP_RELEASE_JSON="$(fetch_github_latest_release_json "$REPO_OWNER" "$REPO_NAME")"
     FORKOP_RELEASE_TAG="$(printf '%s' "$FORKOP_RELEASE_JSON" | install_json_ucode release-tag 2>/dev/null)"
-    [ -n "$FORKOP_RELEASE_TAG" ] || fail "Failed to detect the Forkop release tag"
+    [ -n "$FORKOP_RELEASE_TAG" ] || fail "Failed to detect the FlowGate release tag"
 
     FORKOP_BACKEND_URL="$(printf '%s' "$FORKOP_RELEASE_JSON" | install_json_ucode release-asset-url backend "$asset_ext" 2>/dev/null)"
-    [ -n "$FORKOP_BACKEND_URL" ] || fail "The Forkop release does not contain a forkop .$asset_ext package"
+    [ -n "$FORKOP_BACKEND_URL" ] || fail "The FlowGate release does not contain a flowgate .$asset_ext package"
 
     FORKOP_APP_URL="$(printf '%s' "$FORKOP_RELEASE_JSON" | install_json_ucode release-asset-url app "$asset_ext" 2>/dev/null)"
-    [ -n "$FORKOP_APP_URL" ] || fail "The Forkop release does not contain a luci-app-forkop .$asset_ext package"
+    [ -n "$FORKOP_APP_URL" ] || fail "The FlowGate release does not contain a luci-app-flowgate .$asset_ext package"
 
     FORKOP_BACKEND_NAME="$(basename "$FORKOP_BACKEND_URL")"
     FORKOP_APP_NAME="$(basename "$FORKOP_APP_URL")"
-    FORKOP_PACKAGE_VERSION="$(printf '%s\n' "$FORKOP_BACKEND_NAME" | sed 's/^forkop_//;s/\.ipk$//;s/\.apk$//')"
+    FORKOP_PACKAGE_VERSION="$(printf '%s\n' "$FORKOP_BACKEND_NAME" | sed 's/^flowgate_//;s/^forkop_//;s/\.ipk$//;s/\.apk$//')"
 
     FORKOP_I18N_URL=""
     FORKOP_I18N_NAME=""
 
     if [ "$FORKOP_I18N_REQUESTED" -eq 1 ]; then
         FORKOP_I18N_URL="$(printf '%s' "$FORKOP_RELEASE_JSON" | install_json_ucode release-asset-url i18n "$asset_ext" 2>/dev/null)"
-        [ -n "$FORKOP_I18N_URL" ] || fail "The Forkop release does not contain a luci-i18n-forkop-ru .$asset_ext package"
+        [ -n "$FORKOP_I18N_URL" ] || fail "The FlowGate release does not contain a translation .$asset_ext package"
         FORKOP_I18N_NAME="$(basename "$FORKOP_I18N_URL")"
     fi
 }
@@ -1923,7 +1938,7 @@ decide_i18n_installation() {
 
     detect_installer_language
 
-    if pkg_is_installed "luci-i18n-forkop-ru"; then
+    if pkg_is_installed "luci-i18n-flowgate-ru" || pkg_is_installed "luci-i18n-forkop-ru"; then
         FORKOP_I18N_REQUESTED=1
         msg "$(installer_text i18n_installed)"
         return 0
@@ -2064,9 +2079,9 @@ main() {
     install_selected_sing_box
     post_install
 
-    msg "Forkop $FORKOP_PACKAGE_VERSION has been installed successfully"
+    msg "FlowGate $FORKOP_PACKAGE_VERSION has been installed successfully"
     msg "Source release: ${REPO_OWNER}/${REPO_NAME}@${FORKOP_RELEASE_TAG}"
-    warn "Open LuCI and review your rules before enabling Forkop"
+    warn "Open LuCI and review your rules before enabling FlowGate"
 }
 
 main "$@"

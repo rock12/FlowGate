@@ -243,14 +243,17 @@ function forkop_release_plan(latest_version, asset_ext, i18n_required) {
     if (match(as_string(latest_version), /^[0-9]+[.][0-9]+[.][0-9]+$/) == null)
         exit(1);
 
-    let backend = release_asset_pair(release, "forkop_" + latest_version + "." + asset_ext);
-    let app = release_asset_pair(release, "luci-app-forkop_" + latest_version + "." + asset_ext);
+    let backend = release_asset_pair(release, "flowgate_" + latest_version + "." + asset_ext) ||
+                  release_asset_pair(release, "forkop_" + latest_version + "." + asset_ext);
+    let app = release_asset_pair(release, "luci-app-flowgate_" + latest_version + "." + asset_ext) ||
+              release_asset_pair(release, "luci-app-forkop_" + latest_version + "." + asset_ext);
     if (backend == null || app == null)
         exit(1);
 
     let i18n = { name: "", url: "" };
     if (arg_bool(i18n_required)) {
-        i18n = release_asset_pair(release, "luci-i18n-forkop-ru_" + latest_version + "." + asset_ext);
+        i18n = release_asset_pair(release, "luci-i18n-flowgate-ru_" + latest_version + "." + asset_ext) ||
+               release_asset_pair(release, "luci-i18n-forkop-ru_" + latest_version + "." + asset_ext);
         if (i18n == null)
             exit(1);
     }
