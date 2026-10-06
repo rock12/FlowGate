@@ -1533,6 +1533,9 @@ ensure_bootstrap_ucode_runtime() {
 
     msg "Ensuring all required system dependencies and kernel modules are installed..."
     for dep in ca-bundle curl bind-dig coreutils-base64 ip-full nftables traceroute iputils-ping kmod-tun kmod-nft-tproxy kmod-nft-nat kmod-nft-queue kmod-inet-diag kmod-netlink-diag; do
+        if [ "$dep" = "traceroute" ] && command_exists "traceroute"; then
+            continue
+        fi
         if ! pkg_is_installed "$dep"; then
             msg "Installing dependency: $dep"
             pkg_install_name "$dep" || warn "Package $dep might be built-in or not in feed"
