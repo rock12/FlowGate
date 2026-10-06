@@ -55,10 +55,10 @@ usage() {
     cat <<EOF
 Usage: $0
 
-Installs or updates Forkop packages:
-  - forkop
-  - luci-app-forkop
-  - luci-i18n-forkop-ru when requested or when LuCI language is Russian
+Installs or updates FlowGate packages:
+  - flowgate
+  - luci-app-flowgate
+  - luci-i18n-flowgate-ru when requested or when LuCI language is Russian
 
 Can also install or switch sing-box variant:
   - stable sing-box from OpenWrt feeds
@@ -116,7 +116,7 @@ detect_fetcher() {
         return 0
     fi
 
-    fail "wget or curl is required to download Forkop"
+    fail "wget or curl is required to download FlowGate"
 }
 
 run_with_deadline() {
@@ -1464,19 +1464,28 @@ download_with_retry() {
     url="$1"
     output_path="$2"
     label="$3"
-    attempt=1
-    max_attempts=3
+    max_attempts=2
 
-    while [ "$attempt" -le "$max_attempts" ]; do
-        msg "Downloading $label ($attempt/$max_attempts)"
+    dl_urls="$url"
+    case "$url" in
+        https://github.com/*|https://raw.githubusercontent.com/*)
+            dl_urls="$url https://ghproxy.net/$url https://gh-proxy.com/$url"
+            ;;
+    esac
 
-        if download_file_once "$url" "$output_path" && [ -s "$output_path" ]; then
-            return 0
-        fi
+    for current_url in $dl_urls; do
+        attempt=1
+        while [ "$attempt" -le "$max_attempts" ]; do
+            msg "Downloading $label ($attempt/$max_attempts)"
 
-        rm -f "$output_path"
-        warn "Retrying $label"
-        attempt=$((attempt + 1))
+            if download_file_once "$current_url" "$output_path" && [ -s "$output_path" ]; then
+                return 0
+            fi
+
+            rm -f "$output_path"
+            warn "Retrying $label"
+            attempt=$((attempt + 1))
+        done
     done
 
     return 1
@@ -1547,7 +1556,7 @@ ensure_bootstrap_ucode_runtime() {
     ensure_bootstrap_package "ucode-mod-uci"
 
     msg "Ensuring all required system dependencies and kernel modules are installed..."
-    for dep in ca-bundle curl bind-dig coreutils-base64 ip-full nftables traceroute iputils-ping kmod-tun kmod-nft-tproxy kmod-nft-nat kmod-nft-queue kmod-inet-diag kmod-netlink-diag; do
+    for dep in ca-bundle curl bind-dig coreutils-base64 coreutils-sort gzip gawk grep sed ipset luci-compat ip-full nftables traceroute iputils-ping kmod-tun kmod-nft-tproxy kmod-nft-nat kmod-nft-queue kmod-inet-diag kmod-netlink-diag; do
         if [ "$dep" = "traceroute" ] && command_exists "traceroute"; then
             continue
         fi
@@ -1589,7 +1598,14 @@ ensure_bootstrap_ucode_runtime() {
 
         TMP_SPEEDER="$(mktemp -d /tmp/udpspeeder.XXXXXX 2>/dev/null || echo /tmp)"
         SPEEDER_URL="https://github.com/wangyu-/UDPspeeder/releases/download/20230206.0/speederv2_binaries.tar.gz"
-        if curl -sSL -k "$SPEEDER_URL" -o "$TMP_SPEEDER/speederv2.tar.gz" 2>/dev/null; then
+        speeder_downloaded=0
+        for s_url in "$SPEEDER_URL" "https://ghproxy.net/$SPEEDER_URL" "https://gh-proxy.com/$SPEEDER_URL"; do
+            if curl -sSL -k "$s_url" -o "$TMP_SPEEDER/speederv2.tar.gz" 2>/dev/null && [ -s "$TMP_SPEEDER/speederv2.tar.gz" ]; then
+                speeder_downloaded=1
+                break
+            fi
+        done
+        if [ "$speeder_downloaded" -eq 1 ]; then
             tar -xzf "$TMP_SPEEDER/speederv2.tar.gz" -C "$TMP_SPEEDER" 2>/dev/null || true
             if [ -f "$TMP_SPEEDER/$BIN_NAME" ]; then
                 chmod 755 "$TMP_SPEEDER/$BIN_NAME"
@@ -1652,7 +1668,7 @@ check_system() {
     major="$(printf '%s' "$release" | sed 's/[^0-9].*$//' | cut -d. -f1)"
 
     if [ -n "$major" ] && [ "$major" -lt 24 ]; then
-        fail "Forkop requires OpenWrt 24.10 or newer"
+        fail "FlowGate requires OpenWrt 24.10 or newer"
     fi
 
     available_space="$(df /overlay 2>/dev/null | awk 'NR==2 {print $4}')"
@@ -1764,6 +1780,14 @@ fetch_github_latest_release_json() {
     url="https://api.github.com/repos/${owner}/${repo}/releases/latest"
 
     response="$(http_get "$url" 2>/dev/null || true)"
+    if [ -z "$response" ] || printf '%s' "$response" | grep -q "API rate limit"; then
+        mirror_url="https://ghproxy.net/https://api.github.com/repos/${owner}/${repo}/releases/latest"
+        mirror_resp="$(http_get "$mirror_url" 2>/dev/null || true)"
+        if [ -n "$mirror_resp" ]; then
+            response="$mirror_resp"
+        fi
+    fi
+
     [ -n "$response" ] || fail "Failed to query GitHub latest release metadata for ${owner}/${repo}"
 
     message="$(printf '%s' "$response" | install_json_ucode github-message 2>/dev/null)" ||

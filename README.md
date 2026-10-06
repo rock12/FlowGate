@@ -37,21 +37,52 @@
 
 ### Шаг 2. Запустите скрипт установки
 
-Скопируйте и вставьте одну строку:
+Скопируйте и выполните одну команду:
 
+**Основной источник (GitHub):**
 ```sh
 sh <(wget -O - https://raw.githubusercontent.com/rock12/flowgate/main/install.sh)
 ```
+*(или через curl: `sh <(curl -fsSL https://raw.githubusercontent.com/rock12/flowgate/main/install.sh)`)*
 
-*(Если в вашей прошивке используется `curl`, можно использовать: `sh <(curl -fsSL https://raw.githubusercontent.com/rock12/flowgate/main/install.sh)`)*
+**🌐 Зеркало 1 (ghproxy.net — рекомендуется, если GitHub заблокирован или работает с задержками):**
+```sh
+sh <(wget -O - https://ghproxy.net/https://raw.githubusercontent.com/rock12/flowgate/main/install.sh)
+```
+*(или через curl: `sh <(curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/rock12/flowgate/main/install.sh)`)*
+
+**🌐 Зеркало 2 (fastly.jsdelivr.net CDN):**
+```sh
+sh <(wget -O - https://fastly.jsdelivr.net/gh/rock12/flowgate@main/install.sh)
+```
+*(или через curl: `sh <(curl -fsSL https://fastly.jsdelivr.net/gh/rock12/flowgate@main/install.sh)`)*
 
 #### Что сделает скрипт автоматически:
 1. Определит архитектуру процессора роутера и версию OpenWrt (24.10 с `opkg` или 25.x с `apk`).
-2. Установит все необходимые системные пакеты (`ucode`, `nftables`, `traceroute`, `iputils-ping` и модули ядра TProxy/TUN/Queue).
-3. Скачает и установит бинарный файл `udpspeeder` (`speederv2`).
+2. Установит все необходимые системные пакеты (`ucode`, `nftables`, `traceroute`, `iputils-ping`, утилиты `coreutils-sort`, `gzip`, `gawk`, `ipset`, `luci-compat` и модули ядра TProxy/TUN/Queue).
+3. Скачает и установит бинарный файл `udpspeeder` (`speederv2`) с автовыбором зеркал.
 4. Загрузит и установит актуальные пакеты FlowGate и русский интерфейс LuCI.
 5. Отключит конфликтующий Flow Offloading и утечки IPv6.
 6. Перезапустит веб-сервер и подготовит интерфейс к работе.
+
+---
+
+## 🗑️ Быстрое удаление FlowGate (в 1 команду)
+
+Если вы решите удалить FlowGate, специальный мастер деинсталляции корректно остановит процессы, сбросит таблицы фаервола, вернет настройки DNS и восстановит сеть:
+
+```sh
+sh <(wget -O - https://raw.githubusercontent.com/rock12/flowgate/main/uninstall.sh)
+```
+*(зеркало: `sh <(wget -O - https://ghproxy.net/https://raw.githubusercontent.com/rock12/flowgate/main/uninstall.sh)`)*  
+*(через curl: `sh <(curl -fsSL https://raw.githubusercontent.com/rock12/flowgate/main/uninstall.sh)`)*
+
+> [!TIP]
+> * **Сохранение настроек:** По умолчанию создается резервная копия конфига (`/etc/config/flowgate.bak`).
+> * **Полное удаление под ноль:** Добавьте ключ `--purge` в конец команды, чтобы удалить все файлы и бэкапы:
+>   ```sh
+>   sh <(wget -O - https://raw.githubusercontent.com/rock12/flowgate/main/uninstall.sh) --purge
+>   ```
 
 ---
 
@@ -100,16 +131,16 @@ sh <(wget -O - https://raw.githubusercontent.com/rock12/flowgate/main/install.sh
 
 ### Для OpenWrt с менеджером `apk` (OpenWrt 25.x / snapshot):
 ```sh
-apk add --allow-untrusted forkop_<версия>.apk
-apk add --allow-untrusted luci-app-forkop_<версия>.apk
-apk add --allow-untrusted luci-i18n-forkop-ru_<версия>.apk
+apk add --allow-untrusted flowgate_<версия>.apk
+apk add --allow-untrusted luci-app-flowgate_<версия>.apk
+apk add --allow-untrusted luci-i18n-flowgate-ru_<версия>.apk
 ```
 
 ### Для OpenWrt с менеджером `opkg` (OpenWrt 24.10):
 ```sh
-opkg install --force-overwrite forkop_<версия>.ipk
-opkg install --force-overwrite luci-app-forkop_<версия>.ipk
-opkg install --force-overwrite luci-i18n-forkop-ru_<версия>.ipk
+opkg install --force-overwrite flowgate_<версия>.ipk
+opkg install --force-overwrite luci-app-flowgate_<версия>.ipk
+opkg install --force-overwrite luci-i18n-flowgate-ru_<версия>.ipk
 ```
 
 После установки обновите кэш интерфейса:
@@ -138,13 +169,10 @@ rm -f /tmp/luci-indexcache* /var/luci-indexcache*
 <details>
 <summary><b>3. Как удалить FlowGate с роутера?</b></summary>
 
-Для безопасного и чистого удаления со сбросом правил фаервола, восстановлением стандартного DNS и сохранением резервной копии конфигурации выполните по SSH одну команду:
-
+Воспользуйтесь командой быстрого удаления из раздела [Удаление FlowGate](#-быстрое-удаление-flowgate-в-1-команду):
 ```sh
 sh <(wget -O - https://raw.githubusercontent.com/rock12/flowgate/main/uninstall.sh)
 ```
-*(или через curl: `sh <(curl -fsSL https://raw.githubusercontent.com/rock12/flowgate/main/uninstall.sh)`)*
-
 Скрипт аккуратно остановит службы, сбросит таблицы nftables, вернет стандартные настройки DNS dnsmasq и удалит пакеты. Если нужно удалить абсолютно всё без сохранения бэкапов конфигурации, добавьте ключ `--purge`.
 </details>
 
@@ -155,6 +183,18 @@ sh <(wget -O - https://raw.githubusercontent.com/rock12/flowgate/main/uninstall.
 * **OpenWrt:** 24.10, 25.12 или новее.
 * **Архитектура процессора:** Любая (`aarch64`, `arm`, `x86_64`, `mips_24kc` и др.).
 * **Свободное место во Flash-памяти:** от 15–20 МБ (для роутеров с маленькой флеш-памятью рекомендуется extroot).
+
+---
+
+## ❤️ Благодарности (Credits & Acknowledgements)
+
+Особая благодарность авторам и проектам, чей колоссальный труд послужил основой и источником вдохновения для FlowGate:
+* **Forkop** ([@ushan0v](https://github.com/ushan0v)) — за превосходную оригинальную концепцию, архитектуру веб-интерфейса LuCI, модули умной маршрутизации и управления подписками.
+* **Tachyon** ([@black-desk](https://github.com/black-desk)) — за ценные наработки, подходы к интеграции zapret2, архитектуру DNS-обработки и идеи разделения сервисов.
+* **Zapret & Zapret2** ([@bol-van](https://github.com/bol-van)) — за легендарный автономный комплекс обхода DPI (`nfqws` и `nfqws2`).
+* **sing-box** ([SagerNet](https://github.com/SagerNet/sing-box)) — за универсальное и максимально производительное ядро маршрутизации.
+* **ByeDPI** ([@hufrea](https://github.com/hufrea)) — за легковесный инструмент обхода цензуры (`ciadpi`).
+* **UDPspeeder** ([@wangyu-](https://github.com/wangyu-/UDPspeeder)) — за технологию FEC для устранения потерь пакетов и лагов в играх и голосовых звонках.
 
 ---
 

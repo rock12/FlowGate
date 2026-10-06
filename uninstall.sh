@@ -7,7 +7,7 @@
 
 set -u
 
-UNINSTALLER_VERSION="1.1.6"
+UNINSTALLER_VERSION="1.0.0"
 
 # ─── TUI helpers & Color detection ───────────────────────────────────────────
 ESC="$(printf '\033')"
@@ -61,7 +61,7 @@ _tui_hline() {
 
 tui_banner() {
     printf '\n'
-    printf '  %s%s⚡ FlowGate / Forkop Clean Uninstaller%s v%s\n' "$_c_cyan" "$_c_bold" "$_c_reset" "$UNINSTALLER_VERSION"
+    printf '  %s%s⚡ FlowGate Clean Uninstaller%s v%s\n' "$_c_cyan" "$_c_bold" "$_c_reset" "$UNINSTALLER_VERSION"
     printf '  %sПолное удаление пакетов, сетевых правил и восстановление сети/DNS%s\n' "$_c_dim" "$_c_reset"
     printf '  %s%s%s\n\n' "$_c_dim" "$(_tui_hline '─')" "$_c_reset"
 }
@@ -178,14 +178,20 @@ tui_step "$CURRENT_STEP" "$TOTAL_STEPS" "Создание резервной к�
 BACKUP_PATH=""
 if [ "$OPT_PURGE" -eq 0 ]; then
     TIMESTAMP="$(date +%Y%m%d_%H%M%S 2>/dev/null || date +%s)"
-    if [ -f "/etc/config/forkop" ]; then
-        BACKUP_PATH="/etc/config/forkop.backup-${TIMESTAMP}"
-        cp -af "/etc/config/forkop" "$BACKUP_PATH" 2>/dev/null || true
-        cp -af "/etc/config/forkop" "/etc/config/forkop.bak" 2>/dev/null || true
-        chmod 600 "$BACKUP_PATH" "/etc/config/forkop.bak" 2>/dev/null || true
+    CFG_FILE=""
+    if [ -f "/etc/config/flowgate" ]; then
+        CFG_FILE="/etc/config/flowgate"
+    elif [ -f "/etc/config/forkop" ]; then
+        CFG_FILE="/etc/config/forkop"
+    fi
+    if [ -n "$CFG_FILE" ]; then
+        BACKUP_PATH="${CFG_FILE}.backup-${TIMESTAMP}"
+        cp -af "$CFG_FILE" "$BACKUP_PATH" 2>/dev/null || true
+        cp -af "$CFG_FILE" "${CFG_FILE}.bak" 2>/dev/null || true
+        chmod 600 "$BACKUP_PATH" "${CFG_FILE}.bak" 2>/dev/null || true
         tui_ok "Конфигурация успешно сохранена в: ${BACKUP_PATH}"
     else
-        tui_info "Конфигурационный файл /etc/config/forkop не найден, бэкап пропущен."
+        tui_info "Конфигурационный файл FlowGate не найден, бэкап пропущен."
     fi
 else
     tui_warn "Режим --purge: резервное копирование конфигурации отключено."
@@ -197,18 +203,21 @@ CURRENT_STEP=$((CURRENT_STEP + 1))
 tui_step "$CURRENT_STEP" "$TOTAL_STEPS" "Остановка служб и фоновых процессов..."
 
 # 1. Immediately clean up procd lock files to release any stuck flocks
-rm -f /tmp/lock/procd_forkop* /tmp/lock/*sing-box* 2>/dev/null || true
+rm -f /tmp/lock/procd_flowgate* /tmp/lock/procd_forkop* /tmp/lock/*sing-box* 2>/dev/null || true
+rm -rf /var/run/flowgate*.lock /tmp/flowgate*.lock /var/run/flowgate/ui-state/*.lock /var/run/flowgate/*.lock 2>/dev/null || true
 rm -rf /var/run/forkop*.lock /tmp/forkop*.lock /var/run/forkop/ui-state/*.lock /var/run/forkop/*.lock 2>/dev/null || true
+rm -f /var/run/flowgate/start*.pid /var/run/flowgate/start.retry 2>/dev/null || true
 rm -f /var/run/forkop/start*.pid /var/run/forkop/start.retry 2>/dev/null || true
 
 # 2. Immediately remove autostart symlinks directly (never hang on rc.common flock)
-rm -f /etc/rc.d/*forkop* /etc/rc.d/*sing-box* 2>/dev/null || true
-if [ -f "/etc/init.d/sing-box" ] && grep -q "Forkop managed sing-box" "/etc/init.d/sing-box" 2>/dev/null; then
+rm -f /etc/rc.d/*flowgate* /etc/rc.d/*forkop* /etc/rc.d/*sing-box* 2>/dev/null || true
+if [ -f "/etc/init.d/sing-box" ] && grep -qE "FlowGate managed sing-box|Forkop managed sing-box" "/etc/init.d/sing-box" 2>/dev/null; then
     rm -f "/etc/init.d/sing-box" 2>/dev/null || true
 fi
 
 # 3. Tell procd to stop tracking/respawning services immediately
 if command -v ubus >/dev/null 2>&1; then
+    ubus call service delete '{"name": "flowgate"}' >/dev/null 2>&1 || true
     ubus call service delete '{"name": "forkop"}' >/dev/null 2>&1 || true
     ubus call service delete '{"name": "sing-box"}' >/dev/null 2>&1 || true
 fi
@@ -217,20 +226,20 @@ fi
 killall -9 sing-box 2>/dev/null || true
 killall -9 udpspeeder speederv2 nfqws nfqws2 ciadpi 2>/dev/null || true
 
-# Terminate any running processes executing forkop or flock
+# Terminate any running processes executing flowgate, forkop or flock
 for _pdir in /proc/[0-9]*; do
     [ -d "$_pdir" ] || continue
     _p="${_pdir##*/}"
     [ "$_p" = "$$" ] && continue
     if [ -r "$_pdir/cmdline" ]; then
-        if tr '\0' ' ' < "$_pdir/cmdline" 2>/dev/null | grep -E -q "forkop|procd_forkop"; then
+        if tr '\0' ' ' < "$_pdir/cmdline" 2>/dev/null | grep -E -q "flowgate|forkop|procd_flowgate|procd_forkop"; then
             kill -9 "$_p" 2>/dev/null || true
         fi
     fi
 done
 
 # Clean any PID files that were tracked in runtime dirs
-for _pidfile in /var/run/forkop/*.pid /tmp/forkop/*.pid; do
+for _pidfile in /var/run/flowgate/*.pid /tmp/flowgate/*.pid /var/run/forkop/*.pid /tmp/forkop/*.pid; do
     if [ -f "$_pidfile" ]; then
         _p="$(head -n 1 "$_pidfile" 2>/dev/null || true)"
         [ -n "$_p" ] && [ "$_p" != "$$" ] && kill -9 "$_p" 2>/dev/null || true
@@ -246,12 +255,16 @@ CURRENT_STEP=$((CURRENT_STEP + 1))
 tui_step "$CURRENT_STEP" "$TOTAL_STEPS" "Очистка сетевых таблиц nftables и политик маршрутизации..."
 
 if command -v nft >/dev/null 2>&1; then
+    nft delete table inet FlowGateTable >/dev/null 2>&1 || true
     nft delete table inet ForkopTable >/dev/null 2>&1 || true
+    nft delete table inet flowgate >/dev/null 2>&1 || true
     nft delete table inet forkop >/dev/null 2>&1 || true
+    nft delete table ip flowgate >/dev/null 2>&1 || true
     nft delete table ip forkop >/dev/null 2>&1 || true
+    nft delete table ip6 flowgate >/dev/null 2>&1 || true
     nft delete table ip6 forkop >/dev/null 2>&1 || true
-    rm -f /usr/share/nftables.d/chain-pre/input/*forkop*.nft 2>/dev/null || true
-    rm -f /usr/share/nftables.d/rules/*forkop*.nft 2>/dev/null || true
+    rm -f /usr/share/nftables.d/chain-pre/input/*flowgate*.nft /usr/share/nftables.d/chain-pre/input/*forkop*.nft 2>/dev/null || true
+    rm -f /usr/share/nftables.d/rules/*flowgate*.nft /usr/share/nftables.d/rules/*forkop*.nft 2>/dev/null || true
     if [ -x "/etc/init.d/firewall" ]; then
         run_with_timeout 8 /etc/init.d/firewall restart || true
     fi
@@ -259,18 +272,22 @@ if command -v nft >/dev/null 2>&1; then
 fi
 
 if command -v ip >/dev/null 2>&1; then
+    ip -4 rule del fwmark 0x04000000/0x04000000 table flowgate priority 105 >/dev/null 2>&1 || true
+    ip -6 rule del fwmark 0x04000000/0x04000000 table flowgate priority 105 >/dev/null 2>&1 || true
     ip -4 rule del fwmark 0x04000000/0x04000000 table forkop priority 105 >/dev/null 2>&1 || true
     ip -6 rule del fwmark 0x04000000/0x04000000 table forkop priority 105 >/dev/null 2>&1 || true
     ip -4 rule del fwmark 0x10000000/0x10000000 lookup 100 >/dev/null 2>&1 || true
+    ip -4 rule del lookup flowgate >/dev/null 2>&1 || true
     ip -4 rule del lookup forkop >/dev/null 2>&1 || true
+    ip route flush table flowgate >/dev/null 2>&1 || true
     ip route flush table forkop >/dev/null 2>&1 || true
     ip route flush table 105 >/dev/null 2>&1 || true
 
     if [ -f "/etc/iproute2/rt_tables" ]; then
-        sed -i '/105[[:space:]]\+forkop/d' /etc/iproute2/rt_tables 2>/dev/null || true
+        sed -i '/105[[:space:]]\+\(flowgate\|forkop\)/d' /etc/iproute2/rt_tables 2>/dev/null || true
     fi
 
-    tui_ok "Политики маршрутизации (table forkop/105) сброшены"
+    tui_ok "Политики маршрутизации (table flowgate/forkop) сброшены"
 fi
 
 CURRENT_STEP=$((CURRENT_STEP + 1))
@@ -278,9 +295,9 @@ CURRENT_STEP=$((CURRENT_STEP + 1))
 # ─── STEP 4: Restore DNS & dnsmasq ───────────────────────────────────────────
 tui_step "$CURRENT_STEP" "$TOTAL_STEPS" "Восстановление конфигурации DNS и dnsmasq..."
 
-rm -f /etc/dnsmasq.d/forkop*.conf 2>/dev/null || true
-rm -f /tmp/dnsmasq.d/forkop*.conf 2>/dev/null || true
-rm -rf /tmp/forkop 2>/dev/null || true
+rm -f /etc/dnsmasq.d/flowgate*.conf /etc/dnsmasq.d/forkop*.conf 2>/dev/null || true
+rm -f /tmp/dnsmasq.d/flowgate*.conf /tmp/dnsmasq.d/forkop*.conf 2>/dev/null || true
+rm -rf /tmp/flowgate /tmp/forkop 2>/dev/null || true
 
 if command -v uci >/dev/null 2>&1 && [ -f "/etc/config/dhcp" ]; then
     uci -q del_list dhcp.@dnsmasq[0].server="127.0.0.42" 2>/dev/null || true
@@ -309,6 +326,7 @@ if command -v uci >/dev/null 2>&1 && [ -f "/etc/config/dhcp" ]; then
         uci -q set dhcp.@dnsmasq[0].cachesize="150" 2>/dev/null || true
     fi
 
+    uci -q delete dhcp.flowgate 2>/dev/null || true
     uci -q delete dhcp.forkop 2>/dev/null || true
     uci -q commit dhcp 2>/dev/null || true
     tui_ok "Параметры DHCP и DNS dnsmasq возвращены в исходное состояние"
@@ -325,15 +343,15 @@ CURRENT_STEP=$((CURRENT_STEP + 1))
 tui_step "$CURRENT_STEP" "$TOTAL_STEPS" "Очистка crontab и удаление установленных пакетов..."
 
 if command -v crontab >/dev/null 2>&1; then
-    _crontmp="$(mktemp /tmp/cron.XXXXXX 2>/dev/null || echo '/tmp/cron.forkop.tmp')"
-    crontab -l 2>/dev/null | grep -v -E 'forkop' > "$_crontmp" || true
+    _crontmp="$(mktemp /tmp/cron.XXXXXX 2>/dev/null || echo '/tmp/cron.flowgate.tmp')"
+    crontab -l 2>/dev/null | grep -v -E 'flowgate|forkop' > "$_crontmp" || true
     crontab "$_crontmp" 2>/dev/null || true
     rm -f "$_crontmp" 2>/dev/null || true
     tui_ok "Задачи планировщика crontab очищены"
 fi
 
 if command -v apk >/dev/null 2>&1 && [ -d "/lib/apk/db" ]; then
-    for _pkg in luci-i18n-forkop-ru luci-app-forkop forkop; do
+    for _pkg in luci-i18n-flowgate-ru luci-app-flowgate flowgate luci-i18n-forkop-ru luci-app-forkop forkop; do
         if [ -f /etc/apk/world ]; then
             sed -i -E "/^${_pkg}([><= ].*)?$/d" /etc/apk/world 2>/dev/null || true
         fi
@@ -359,7 +377,7 @@ elif command -v opkg >/dev/null 2>&1; then
         [ "$_wait" -ge 10 ] && break
         sleep 1
     done
-    for _pkg in luci-i18n-forkop-ru luci-app-forkop forkop; do
+    for _pkg in luci-i18n-flowgate-ru luci-app-flowgate flowgate luci-i18n-forkop-ru luci-app-forkop forkop; do
         if opkg list-installed "$_pkg" 2>/dev/null | grep -q "^$_pkg "; then
             opkg remove --force-depends --force-remove "$_pkg" >/dev/null 2>&1 || true
         fi
@@ -379,14 +397,14 @@ CURRENT_STEP=$((CURRENT_STEP + 1))
 # ─── STEP 6: Remove Leftover Files & LuCI Cache ──────────────────────────────
 tui_step "$CURRENT_STEP" "$TOTAL_STEPS" "Очистка оставшихся файлов, хуков и кэша LuCI..."
 
-rm -rf /usr/lib/forkop 2>/dev/null || true
-rm -rf /usr/share/forkop 2>/dev/null || true
-rm -rf /www/luci-static/resources/view/forkop 2>/dev/null || true
-rm -f /usr/share/luci/menu.d/luci-app-forkop.json 2>/dev/null || true
-rm -f /usr/share/rpcd/acl.d/luci-app-forkop.json 2>/dev/null || true
-rm -f /etc/uci-defaults/*forkop* 2>/dev/null || true
-rm -f /usr/bin/forkop 2>/dev/null || true
-rm -f /etc/init.d/forkop 2>/dev/null || true
+rm -rf /usr/lib/flowgate /usr/lib/forkop 2>/dev/null || true
+rm -rf /usr/share/flowgate /usr/share/forkop 2>/dev/null || true
+rm -rf /www/luci-static/resources/view/flowgate /www/luci-static/resources/view/forkop 2>/dev/null || true
+rm -f /usr/share/luci/menu.d/luci-app-flowgate.json /usr/share/luci/menu.d/luci-app-forkop.json 2>/dev/null || true
+rm -f /usr/share/rpcd/acl.d/luci-app-flowgate.json /usr/share/rpcd/acl.d/luci-app-forkop.json 2>/dev/null || true
+rm -f /etc/uci-defaults/*flowgate* /etc/uci-defaults/*forkop* 2>/dev/null || true
+rm -f /usr/bin/flowgate /usr/bin/forkop 2>/dev/null || true
+rm -f /etc/init.d/flowgate /etc/init.d/forkop 2>/dev/null || true
 
 if [ "$OPT_KEEP_BINARIES" -eq 0 ]; then
     rm -f /usr/bin/udpspeeder /usr/bin/speederv2 2>/dev/null || true
@@ -398,10 +416,11 @@ if [ "$OPT_KEEP_BINARIES" -eq 0 ]; then
 fi
 
 # Clean translations
-rm -f /usr/lib/lua/luci/i18n/forkop.* 2>/dev/null || true
-find /usr/lib/lua/luci/i18n/ -name "forkop.*" -delete 2>/dev/null || true
+rm -f /usr/lib/lua/luci/i18n/flowgate.* /usr/lib/lua/luci/i18n/forkop.* 2>/dev/null || true
+find /usr/lib/lua/luci/i18n/ -name "*flowgate*" -o -name "*forkop*" 2>/dev/null | xargs rm -f 2>/dev/null || true
 
 # Clear runtime and temporary state
+rm -rf /var/run/flowgate* /var/log/flowgate* /tmp/flowgate* 2>/dev/null || true
 rm -rf /var/run/forkop* /var/log/forkop* /tmp/forkop* 2>/dev/null || true
 
 # Clear LuCI index and module caches
@@ -409,14 +428,15 @@ rm -f /var/luci-indexcache* /tmp/luci-indexcache* /tmp/luci-modulecache/* 2>/dev
 
 # Clean ucitrack entry
 if [ -f "/etc/config/ucitrack" ]; then
+    uci -q delete ucitrack.@flowgate[0] 2>/dev/null || true
     uci -q delete ucitrack.@forkop[0] 2>/dev/null || true
     uci -q commit ucitrack 2>/dev/null || true
 fi
 
 # Purge configs and persistent state if requested
 if [ "$OPT_PURGE" -eq 1 ]; then
-    rm -f /etc/config/forkop* 2>/dev/null || true
-    rm -rf /etc/forkop /etc/.forkop /etc/backup/forkop_config 2>/dev/null || true
+    rm -f /etc/config/flowgate* /etc/config/forkop* 2>/dev/null || true
+    rm -rf /etc/flowgate /etc/.flowgate /etc/forkop /etc/.forkop /etc/backup/forkop_config 2>/dev/null || true
     tui_ok "Все конфигурации и скрытые состояния FlowGate удалены (--purge)"
 fi
 

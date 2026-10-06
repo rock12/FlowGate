@@ -1,6 +1,6 @@
 #!/bin/sh
 # shellcheck shell=dash
-# Forkop - Dependency installer for OpenWrt (supports both opkg and apk)
+# FlowGate - Dependency installer for OpenWrt (supports both opkg and apk)
 
 set -e
 
@@ -52,8 +52,8 @@ install_pkg() {
     fi
 }
 
-msg "==> Установка основных зависимостей и библиотек ucode..."
-for pkg in ucode ucode-mod-fs ucode-mod-uci curl ca-bundle bind-dig ip-full coreutils-base64 nftables traceroute iputils-ping; do
+msg "==> Установка основных зависимостей и системных утилит (FlowGate, Zapret/Zapret2, ByeDPI)..."
+for pkg in ucode ucode-mod-fs ucode-mod-uci curl ca-bundle bind-dig ip-full coreutils-base64 coreutils-sort gzip gawk grep sed ipset luci-compat nftables traceroute iputils-ping; do
     install_pkg "$pkg"
 done
 
@@ -118,7 +118,14 @@ if ! command -v udpspeeder >/dev/null 2>&1 && ! command -v speederv2 >/dev/null 
 
     TMP_SPEEDER="$(mktemp -d /tmp/udpspeeder.XXXXXX 2>/dev/null || echo /tmp)"
     SPEEDER_URL="https://github.com/wangyu-/UDPspeeder/releases/download/20230206.0/speederv2_binaries.tar.gz"
-    if curl -sSL -k "$SPEEDER_URL" -o "$TMP_SPEEDER/speederv2.tar.gz" 2>/dev/null; then
+    speeder_downloaded=0
+    for s_url in "$SPEEDER_URL" "https://ghproxy.net/$SPEEDER_URL" "https://gh-proxy.com/$SPEEDER_URL"; do
+        if curl -sSL -k "$s_url" -o "$TMP_SPEEDER/speederv2.tar.gz" 2>/dev/null && [ -s "$TMP_SPEEDER/speederv2.tar.gz" ]; then
+            speeder_downloaded=1
+            break
+        fi
+    done
+    if [ "$speeder_downloaded" -eq 1 ]; then
         tar -xzf "$TMP_SPEEDER/speederv2.tar.gz" -C "$TMP_SPEEDER" 2>/dev/null || true
         if [ -f "$TMP_SPEEDER/$BIN_NAME" ]; then
             chmod 755 "$TMP_SPEEDER/$BIN_NAME"
