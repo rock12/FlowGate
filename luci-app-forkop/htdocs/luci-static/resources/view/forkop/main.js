@@ -8880,7 +8880,7 @@ function renderAvailableActions({
         classNames: ["cbi-button-apply"],
         onClick: restart.onClick,
         icon: renderRotateCcwIcon24,
-        text: _("Restart Forkop"),
+        text: _("Restart FlowGate"),
         loading: restart.loading,
         disabled: restart.disabled
       })
@@ -8890,7 +8890,7 @@ function renderAvailableActions({
         classNames: ["cbi-button-remove"],
         onClick: stop.onClick,
         icon: renderCircleStopIcon24,
-        text: _("Stop Forkop"),
+        text: _("Stop FlowGate"),
         loading: stop.loading,
         disabled: stop.disabled
       })
@@ -8900,7 +8900,7 @@ function renderAvailableActions({
         classNames: ["cbi-button-save"],
         onClick: start.onClick,
         icon: renderCirclePlayIcon24,
-        text: _("Start Forkop"),
+        text: _("Start FlowGate"),
         loading: start.loading,
         disabled: start.disabled
       })
@@ -13477,7 +13477,7 @@ function getComponentCards() {
     {
       component: "forkop",
       column: 0,
-      title: "Forkop",
+      title: "FlowGate",
       version: systemInfoLoading ? _("Loading...") : normalizeCompiledVersion(systemInfo.forkop_version),
       latestVersion: getLatestVersion("forkop"),
       releaseUrl: getGitHubReleaseUrl("forkop"),

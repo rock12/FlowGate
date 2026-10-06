@@ -113,7 +113,7 @@ jobs:
           draft: false
           prerelease: false
           make_latest: true
-          name: ${{ needs.preparation.outputs.version }}
+          name: FlowGate ${{ needs.preparation.outputs.version }}
           tag_name: ${{ needs.preparation.outputs.version }}
           target_commitish: ${{ needs.preparation.outputs.commitish }}
           body: ${{ needs.preparation.outputs.release_notes }}

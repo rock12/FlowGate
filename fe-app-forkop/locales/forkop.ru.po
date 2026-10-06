@@ -345,7 +345,10 @@ msgid "Config File Path"
 msgstr "Путь к файлу конфигурации"
 
 msgid "Configuration for Forkop service"
-msgstr "Настройки сервиса Forkop"
+msgstr "Настройки сервиса FlowGate"
+
+msgid "Configuration for FlowGate service"
+msgstr "Настройки сервиса FlowGate"
 
 msgid "Configure User-Agent in the item settings"
 msgstr "Настройте User-Agent в настройках элемента"
@@ -753,13 +756,16 @@ msgid "Forkop manages the nfqws2 process lifecycle itself, so daemon mode is not
 msgstr "Forkop сам управляет жизненным циклом nfqws2, поэтому режим daemon здесь запрещён."
 
 msgid "Forkop service is stopped. Start the service to display connections."
-msgstr "Служба Forkop остановлена. Запустите сервис для отображения подключений."
+msgstr "Служба FlowGate остановлена. Запустите сервис для отображения подключений."
 
 msgid "Forkop service is stopped. Start the service to display the dashboard."
-msgstr "Служба Forkop остановлена. Запустите сервис для отображения дашборда."
+msgstr "Служба FlowGate остановлена. Запустите сервис для отображения дашборда."
 
 msgid "Forkop Settings"
-msgstr "Настройки Forkop"
+msgstr "Настройки FlowGate"
+
+msgid "FlowGate Settings"
+msgstr "Настройки FlowGate"
 
 msgid "Forkop will not modify your DHCP configuration"
 msgstr "Forkop не будет изменять вашу конфигурацию DHCP"
@@ -1548,7 +1554,10 @@ msgid "Resource selection by IP or CIDR inside nfqws2 is not supported here; sin
 msgstr "Выбор ресурсов по IP или CIDR внутри nfqws2 здесь не поддерживается; sing-box выбирает ресурсы до NFQUEUE."
 
 msgid "Restart Forkop"
-msgstr "Перезапустить Forkop"
+msgstr "Перезапустить FlowGate"
+
+msgid "Restart FlowGate"
+msgstr "Перезапустить FlowGate"
 
 msgid "Resume updates"
 msgstr "Продолжить обновление"
@@ -1848,13 +1857,19 @@ msgid "Standalone Zapret2 service is inactive"
 msgstr "Отдельная служба Zapret2 неактивна"
 
 msgid "Start Forkop"
-msgstr "Запустить Forkop"
+msgstr "Запустить FlowGate"
+
+msgid "Start FlowGate"
+msgstr "Запустить FlowGate"
 
 msgid "Stop checking when URLTest group is not used. Use sing-box duration format like 1d, 12h or 30m."
 msgstr "Останавливать проверку если URLTest группа не используется. Используйте формат длительности sing-box, например 1d, 12h или 30m."
 
 msgid "Stop Forkop"
-msgstr "Остановить Forkop"
+msgstr "Остановить FlowGate"
+
+msgid "Stop FlowGate"
+msgstr "Остановить FlowGate"
 
 msgid "Subnets from the list will be extracted and added to nftables"
 msgstr "IP-адреса и подсети из списка будут извлечены и добавлены в nftables"

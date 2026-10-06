@@ -900,7 +900,7 @@ function getComponentCards(): ComponentCard[] {
     {
       component: 'forkop',
       column: 0,
-      title: 'Forkop',
+      title: 'FlowGate',
       version: systemInfoLoading
         ? _('Loading...')
         : normalizeCompiledVersion(systemInfo.forkop_version),

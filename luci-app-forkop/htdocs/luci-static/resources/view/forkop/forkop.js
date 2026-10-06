@@ -358,8 +358,8 @@ const EntryPoint = {
     };
     const forkopMap = new form.Map(
       UCI_PACKAGE,
-      _("Forkop Settings"),
-      _("Configuration for Forkop service"),
+      _("FlowGate Settings"),
+      _("Configuration for FlowGate service"),
     );
     forkopMap.tabbed = true;
     const originalHandleSaveApply = forkopMap.handleSaveApply;
