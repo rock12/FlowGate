@@ -5,6 +5,8 @@ on:
     paths:
       - 'forkop/files/**'
       - 'forkop/Makefile'
+      - 'luci-app-forkop/**'
+      - 'fe-app-forkop/**'
       - 'build.sh'
       - 'tests/**'
       - '.github/workflows/build.yml'
@@ -15,6 +17,8 @@ on:
     paths:
       - 'forkop/files/**'
       - 'forkop/Makefile'
+      - 'luci-app-forkop/**'
+      - 'fe-app-forkop/**'
       - 'build.sh'
       - 'tests/**'
       - '.github/workflows/build.yml'
