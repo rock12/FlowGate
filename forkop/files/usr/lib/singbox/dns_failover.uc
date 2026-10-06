@@ -102,15 +102,18 @@ function duration_seconds(value, fallback) {
 }
 
 function probe_timeout(settings_value) {
-    return duration_seconds(settings_value, 2);
+    return duration_seconds(settings_value, 5);
 }
 
 function probe_port(kind, index_value, timeout_seconds) {
+    let t_sec = int(timeout_seconds || 5);
+    if (t_sec < 1) t_sec = 1;
     let args = [
         "dig", "-p", as_string(runtime_dns.health_port(kind, index_value)),
         "@" + runtime_dns.DNS_HEALTH_ADDRESS,
         CHECK_DOMAIN, "A", "+short",
-        "+timeout=" + as_string(timeout_seconds), "+tries=1"
+        "+time=" + as_string(t_sec),
+        "+timeout=" + as_string(t_sec), "+tries=2"
     ];
     for (let line in split(command_output_from_args(args), "\n"))
         if (core_ip.valid_ipv4(trim(as_string(line))))
@@ -119,10 +122,13 @@ function probe_port(kind, index_value, timeout_seconds) {
 }
 
 function probe_canonical_main(timeout_seconds) {
+    let t_sec = int(timeout_seconds || 5);
+    if (t_sec < 1) t_sec = 1;
     let args = [
         "dig", "-p", as_string(runtime_dns.health_port("active", 0)),
         "@" + runtime_dns.DNS_HEALTH_ADDRESS, CHECK_DOMAIN, "A", "+short",
-        "+timeout=" + as_string(timeout_seconds), "+tries=1"
+        "+time=" + as_string(t_sec),
+        "+timeout=" + as_string(t_sec), "+tries=2"
     ];
     for (let line in split(command_output_from_args(args), "\n"))
         if (core_ip.valid_ipv4(trim(as_string(line))))

@@ -4,6 +4,7 @@ let common = require("core.common");
 let core_ip = require("core.ip");
 let runtime_constants = require("singbox.constants");
 let runtime_url = require("core.url");
+let fs = require("fs");
 
 let as_string = common.as_string;
 let bool_option = common.bool_option;
@@ -16,12 +17,43 @@ const DNS_FAILOVER_STATE_FILE = getenv("FORKOP_DNS_FAILOVER_STATE_FILE") || "/va
 const DNS_HEALTH_ADDRESS = getenv("FORKOP_DNS_HEALTH_ADDRESS") || "127.0.0.42";
 const DNS_HEALTH_PORT_BASE = int(getenv("FORKOP_DNS_HEALTH_PORT_BASE") || "10053");
 
+function get_wan_dns_servers() {
+    let result = [];
+    let resolv_data = fs.readfile("/tmp/resolv.conf.d/resolv.conf.auto") || fs.readfile("/tmp/resolv.conf.auto");
+    if (resolv_data) {
+        for (let line in split(resolv_data, "\n")) {
+            let parts = split(trim(line), /[ \t]+/);
+            if (length(parts) >= 2 && parts[0] == "nameserver") {
+                let ip = parts[1];
+                if (ip != "127.0.0.1" && ip != "127.0.0.42" && ip != "::1") {
+                    push(result, ip);
+                }
+            }
+        }
+    }
+    return result;
+}
+
 function server_list(settings, key, fallback) {
     let result = [];
     for (let value in list_option(settings, key)) {
         value = trim(as_string(value));
         if (value != "")
             push(result, value);
+    }
+    // Explicit fallback servers (plain UDP) between primary and WAN-DNS fallback
+    if (key == "dns_server") {
+        for (let value in list_option(settings, "dns_fallback_server")) {
+            value = trim(as_string(value));
+            if (value != "")
+                push(result, value);
+        }
+    }
+    let fallback_key = (key == "dns_server") ? "fallback_wan_main" : "fallback_wan_bootstrap";
+    if (bool_option(settings, fallback_key, false)) {
+        for (let wan_ip in get_wan_dns_servers()) {
+            push(result, wan_ip);
+        }
     }
     if (length(result) == 0)
         push(result, fallback);
@@ -42,6 +74,30 @@ function detour_tag(settings) {
         return "";
     let section_name = option(settings, "dns_detour_section", "");
     return section_name == "" ? "" : runtime_constants.outbound_tag(section_name);
+}
+
+function configured_server_count(settings, key) {
+    let count = length(list_option(settings, key));
+    if (count == 0) count = 1;
+    return count;
+}
+
+function explicit_fallback_count(settings) {
+    return length(list_option(settings, "dns_fallback_server"));
+}
+
+function is_explicit_fallback_index(settings, index) {
+    let primary = configured_server_count(settings, "dns_server");
+    let fallback = explicit_fallback_count(settings);
+    return int(index) >= primary && int(index) < primary + fallback;
+}
+
+function is_wan_fallback_index(settings, index) {
+    if (!bool_option(settings, "fallback_wan_main", false))
+        return false;
+    let primary = configured_server_count(settings, "dns_server");
+    let fallback = explicit_fallback_count(settings);
+    return int(index) >= primary + fallback;
 }
 
 function state_template(settings) {
@@ -145,11 +201,11 @@ function server_from_options(tag_name, dns_type, dns_server, detour) {
 
     if (dns_type == "udp") {
         if (port != "")
-            result.server_port = int(port, 10);
+            result.server_port = int(port);
     }
     else if (dns_type == "dot") {
         result.type = "tls";
-        result.server_port = port != "" ? int(port, 10) : 853;
+        result.server_port = port != "" ? int(port) : 853;
         result.tls = { enabled: true };
         if (core_ip.valid_ip(server) && KNOWN_DNS_SERVER_NAMES[server])
             result.tls.server_name = KNOWN_DNS_SERVER_NAMES[server];
@@ -158,9 +214,18 @@ function server_from_options(tag_name, dns_type, dns_server, detour) {
     }
     else if (dns_type == "doh") {
         result.type = "https";
-        result.server_port = port != "" ? int(port, 10) : 443;
+        result.server_port = port != "" ? int(port) : 443;
         let path = runtime_url.path(dns_server);
         result.path = (path != "" && path != "/") ? path : "/dns-query";
+        result.tls = { enabled: true };
+        if (core_ip.valid_ip(server) && KNOWN_DNS_SERVER_NAMES[server])
+            result.tls.server_name = KNOWN_DNS_SERVER_NAMES[server];
+        else if (!core_ip.valid_ip(server))
+            result.tls.server_name = server;
+    }
+    else if (dns_type == "doq") {
+        result.type = "quic";
+        result.server_port = port != "" ? int(port) : 784;
         result.tls = { enabled: true };
         if (core_ip.valid_ip(server) && KNOWN_DNS_SERVER_NAMES[server])
             result.tls.server_name = KNOWN_DNS_SERVER_NAMES[server];
@@ -186,18 +251,36 @@ function bootstrap_server(tag_name, value) {
         type: "udp",
         tag: tag_name,
         server: server != "" ? server : value,
-        server_port: port != "" ? int(port, 10) : 53
+        server_port: port != "" ? int(port) : 53
     };
 }
 
 function server_config(settings, override_state) {
     let active = active_values(settings, override_state);
-    return server_from_options(
+    let is_wan = is_wan_fallback_index(settings, active.state.main_index);
+    let is_fallback = is_explicit_fallback_index(settings, active.state.main_index);
+    // WAN and explicit fallback servers must always use direct UDP — never detour through proxy
+    let dns_type = (is_wan || is_fallback) ? "udp" : active.state.dns_type;
+    let detour = (is_wan || is_fallback) ? "" : active.state.dns_detour;
+    let result = server_from_options(
         runtime_constants.DNS_SERVER_TAG,
-        active.state.dns_type,
+        dns_type,
         active.main,
-        active.state.dns_detour
+        detour
     );
+
+    if (bool_option(settings, "dns_doq_ech", false)) {
+        if (result.type == "tls" || result.type == "quic") {
+            if (!result.tls) result.tls = { enabled: true };
+            result.tls.ech = { enabled: true };
+        }
+        if (result.type == "https") {
+            if (!result.tls) result.tls = { enabled: true };
+            result.tls.ech = { enabled: true };
+        }
+    }
+
+    return result;
 }
 
 function bootstrap_config(settings, override_state) {
@@ -237,11 +320,13 @@ function add_active_health_inbound(result) {
     push(result.sniff_inbounds, inbound_tag);
 }
 
-function add_health_candidate(result, kind, index_value, server) {
+function add_health_candidate(result, kind, index_value, server, override_dns_type, override_detour) {
     let server_tag = health_tag(kind, index_value, "server");
     let inbound_tag = health_tag(kind, index_value, "in");
+    let dns_type = override_dns_type || result.state.dns_type;
+    let detour = override_detour != null ? override_detour : result.state.dns_detour;
     let dns_server = kind == "main"
-        ? server_from_options(server_tag, result.state.dns_type, server, result.state.dns_detour)
+        ? server_from_options(server_tag, dns_type, server, detour)
         : bootstrap_server(server_tag, server);
 
     if (dns_server.unsupported) {
@@ -279,16 +364,20 @@ function config(settings, override_state) {
         sniff_inbounds: []
     };
 
-    if (length(state.main_servers) > 1 || length(state.bootstrap_servers) > 1)
+    let failover_active = length(state.main_servers) > 1 || length(state.bootstrap_servers) > 1;
+    if (failover_active) {
         add_active_health_inbound(result);
 
-    if (length(state.main_servers) > 1)
-        for (let i = 0; i < length(state.main_servers); i++)
-            add_health_candidate(result, "main", i, state.main_servers[i]);
+        if (length(state.main_servers) > 0)
+            for (let i = 0; i < length(state.main_servers); i++) {
+                let dns_type = is_wan_fallback_index(settings, i) ? "udp" : state.dns_type;
+                add_health_candidate(result, "main", i, state.main_servers[i], dns_type, "");
+            }
 
-    if (length(state.bootstrap_servers) > 1)
-        for (let i = 0; i < length(state.bootstrap_servers); i++)
-            add_health_candidate(result, "bootstrap", i, state.bootstrap_servers[i]);
+        if (length(state.bootstrap_servers) > 0)
+            for (let i = 0; i < length(state.bootstrap_servers); i++)
+                add_health_candidate(result, "bootstrap", i, state.bootstrap_servers[i]);
+    }
 
     return result;
 }

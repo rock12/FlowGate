@@ -125,14 +125,124 @@ function configureDnsList(option, choices, defaultValue) {
   };
 }
 
-function configureDnsFailoverVisibility(option, dnsOption, bootstrapOption) {
+function refreshOptionChoices(option, choices) {
+  delete option.keylist;
+  delete option.vallist;
+  (choices || []).forEach((choice) => {
+    if (typeof choice === "object") {
+      option.value(choice.value, choice.label);
+    } else {
+      option.value(choice);
+    }
+  });
+}
+
+function getDnsServerChoices(dnsType) {
+  const servers =
+    (main.DNS_SERVERS_BY_PROTOCOL && main.DNS_SERVERS_BY_PROTOCOL[dnsType]) ||
+    (main.DNS_SERVERS_BY_PROTOCOL && main.DNS_SERVERS_BY_PROTOCOL.udp) ||
+    main.DNS_SERVER_OPTIONS;
+  return Object.entries(servers).map(([value, label]) => ({
+    value,
+    label: _(label),
+  }));
+}
+
+function getDefaultDnsServers(dnsType) {
+  const servers =
+    (main.DNS_SERVERS_BY_PROTOCOL && main.DNS_SERVERS_BY_PROTOCOL[dnsType]) ||
+    (main.DNS_SERVERS_BY_PROTOCOL && main.DNS_SERVERS_BY_PROTOCOL.udp) ||
+    main.DNS_SERVER_OPTIONS;
+  const keys = Object.keys(servers);
+  return keys.length > 0 ? [keys[0]] : ["77.88.8.8"];
+}
+
+const settingsDnsDynamicState = {
+  dnsType: null,
+  widget: null,
+  option: null,
+  refreshers: new Map(),
+};
+
+function configureDnsDynamicList(option, getChoices, defaultValue) {
+  option.default = [defaultValue];
+  option.rmempty = false;
+  option.validate = function (_section_id, value) {
+    const normalized = `${value || ""}`.trim();
+    if (!normalized) {
+      return optionListValues(option, _section_id).length > 0
+        ? true
+        : _("Add at least one DNS server");
+    }
+    const validation = main.validateDNS(normalized);
+    return validation.valid ? true : validation.message;
+  };
+  option.renderWidget = function (section_id, _option_index, cfgvalue) {
+    const values = L.toArray(cfgvalue != null ? cfgvalue : this.default);
+    const choices = getChoices(section_id, values);
+    const labels = {};
+    choices.forEach((choice) => {
+      labels[choice.value] = choice.label;
+    });
+    refreshOptionChoices(this, choices);
+    let choiceSignature = JSON.stringify(
+      choices.map((choice) => [choice.value, choice.label]),
+    );
+    const widget = new ui.DynamicList(values, labels, {
+      id: this.cbid(section_id),
+      sort: this.keylist,
+      optional: this.optional || this.rmempty,
+      datatype: this.datatype,
+      placeholder: this.placeholder,
+      validate: L.bind(this.validate, this, section_id),
+      disabled: this.readonly != null ? this.readonly : this.map.readonly,
+    });
+    const node = widget.render();
+    const refreshChoices = () => {
+      if (!node.isConnected) return false;
+      const currentValues = widget.getValue();
+      const currentChoices = getChoices(section_id, currentValues);
+      const currentLabels = {};
+      currentChoices.forEach((choice) => {
+        currentLabels[choice.value] = choice.label;
+      });
+      const currentSignature = JSON.stringify(
+        currentChoices.map((choice) => [choice.value, choice.label]),
+      );
+      if (currentSignature === choiceSignature) return;
+      choiceSignature = currentSignature;
+      refreshOptionChoices(this, currentChoices);
+      widget.choices = currentLabels;
+      widget.clearChoices();
+      widget.addChoices(
+        currentChoices.map((choice) => choice.value),
+        currentLabels,
+      );
+    };
+    const refreshBeforeOpening = (event) => {
+      if (event.target && event.target.closest(".add-item")) refreshChoices();
+    };
+    node.addEventListener("mousedown", refreshBeforeOpening, true);
+    node.addEventListener("focusin", refreshBeforeOpening, true);
+    if (!settingsDnsDynamicState.refreshers.has(section_id)) {
+      settingsDnsDynamicState.refreshers.set(section_id, new Set());
+    }
+    settingsDnsDynamicState.refreshers.get(section_id).add(refreshChoices);
+    settingsDnsDynamicState.widget = widget;
+    settingsDnsDynamicState.option = this;
+    return node;
+  };
+}
+
+function configureDnsFailoverVisibility(option, dnsOption, bootstrapOption, fallbackOption) {
   option.depends("dns_server", "__forkop_multiple_dns__");
   option.depends("bootstrap_dns_server", "__forkop_multiple_dns__");
   option.retain = true;
   option.checkDepends = function (section_id) {
     return (
       optionListValues(dnsOption, section_id).length > 1 ||
-      optionListValues(bootstrapOption, section_id).length > 1
+      optionListValues(bootstrapOption, section_id).length > 1 ||
+      (fallbackOption && optionListValues(fallbackOption, section_id).length > 0)
     );
   };
 }
@@ -142,6 +252,7 @@ function configureDnsDuration(
   defaultValue,
   dnsOption,
   bootstrapOption,
+  fallbackOption,
 ) {
   option.default = defaultValue;
   option.rmempty = false;
@@ -152,7 +263,7 @@ function configureDnsDuration(
     }
     return true;
   };
-  configureDnsFailoverVisibility(option, dnsOption, bootstrapOption);
+  configureDnsFailoverVisibility(option, dnsOption, bootstrapOption, fallbackOption);
 }
 
 function createSettingsContent(section, capabilities) {
@@ -164,9 +275,12 @@ function createSettingsContent(section, capabilities) {
   );
   o.value("doh", _("DNS over HTTPS (DoH)"));
   o.value("dot", _("DNS over TLS (DoT)"));
+  o.value("doq", _("DNS over QUIC (DoQ)"));
   o.value("udp", _("UDP (Unprotected DNS)"));
   o.default = "udp";
   o.rmempty = false;
+
+  const dnsTypeOption = o;
 
   const dnsOption = section.option(
     form.DynamicList,
@@ -176,7 +290,17 @@ function createSettingsContent(section, capabilities) {
       "Main DNS server. If multiple servers are selected, a timeout switches to a backup.",
     ),
   );
-  configureDnsList(dnsOption, main.DNS_SERVER_OPTIONS, "77.88.8.8");
+  configureDnsDynamicList(
+    dnsOption,
+    (_section_id) => {
+      const dnsType =
+        settingsDnsDynamicState.dnsType ||
+        uci.get(main.FORKOP_UCI_PACKAGE, "settings", "dns_type") ||
+        "udp";
+      return getDnsServerChoices(dnsType);
+    },
+    "77.88.8.8",
+  );
 
   const bootstrapOption = section.option(
     form.DynamicList,
@@ -192,13 +316,87 @@ function createSettingsContent(section, capabilities) {
     "77.88.8.8",
   );
 
+  const fallbackDnsOption = section.option(
+    form.DynamicList,
+    "dns_fallback_server",
+    _("Fallback DNS Servers"),
+    _(
+      "Plain-UDP DNS servers used as a last resort when all primary DNS fail. These are always unencrypted (no DoH/DoT). Example: 1.1.1.1, 8.8.8.8. Unlike the ISP fallback toggle, these are your own chosen servers.",
+    ),
+  );
+  configureDnsList(fallbackDnsOption, main.BOOTSTRAP_DNS_SERVER_OPTIONS, "");
+  fallbackDnsOption.rmempty = true;
+  fallbackDnsOption.default = [];
+  fallbackDnsOption.validate = function (_section_id, value) {
+    const normalized = `${value || ""}`.trim();
+    if (!normalized) return true;
+    if (normalized.includes("://") || normalized.includes("/"))
+      return _(
+        "Fallback DNS servers must be plain UDP (IP or hostname). DoH/DoT URLs are not allowed here.",
+      );
+    const validation = main.validateDNS(normalized);
+    return validation.valid ? true : validation.message;
+  };
+
+  dnsTypeOption.onchange = function (_ev, section_id, value) {
+    const newType = value || "udp";
+    if (newType === settingsDnsDynamicState.dnsType) return;
+    settingsDnsDynamicState.dnsType = newType;
+
+    const widget = settingsDnsDynamicState.widget;
+    if (widget) {
+      const choices = getDnsServerChoices(newType);
+      const defaultLabels = {};
+      choices.forEach((c) => {
+        defaultLabels[c.value] = c.label;
+      });
+      const defaultServers = getDefaultDnsServers(newType);
+      widget.choices = defaultLabels;
+      refreshOptionChoices(
+        settingsDnsDynamicState.option || dnsOption,
+        choices,
+      );
+      widget.clearChoices();
+      widget.addChoices(
+        choices.map((c) => c.value),
+        defaultLabels,
+      );
+      widget.setValue(defaultServers);
+    }
+
+    const refreshers = settingsDnsDynamicState.refreshers.get(section_id);
+    if (refreshers) {
+      refreshers.forEach((fn) => fn());
+    }
+  };
+
+  o = section.option(
+    form.Flag,
+    "fallback_wan_main",
+    _("Enable WAN DNS Fallback for Main DNS"),
+    _(
+      "⚠️ If all Main DNS fail 3 times, queries will be sent to your ISP's DNS in plaintext. Only use as a last resort to prevent complete internet loss.",
+    ),
+  );
+  o.default = o.disabled;
+
+  o = section.option(
+    form.Flag,
+    "fallback_wan_bootstrap",
+    _("Enable WAN DNS Fallback for Bootstrap DNS"),
+    _(
+      "⚠️ If all Bootstrap DNS fail 3 times, queries will be sent to your ISP's DNS in plaintext. Only use as a last resort to prevent complete internet loss.",
+    ),
+  );
+  o.default = o.disabled;
+
   o = section.option(
     form.Value,
     "dns_check_interval",
     _("DNS Check Interval"),
     _("How often to check the active DNS servers."),
   );
-  configureDnsDuration(o, "10s", dnsOption, bootstrapOption);
+  configureDnsDuration(o, "10s", dnsOption, bootstrapOption, fallbackDnsOption);
 
   o = section.option(
     form.Value,
@@ -206,7 +404,7 @@ function createSettingsContent(section, capabilities) {
     _("Higher-priority DNS Check"),
     _("How often to check whether a higher-priority DNS server has recovered."),
   );
-  configureDnsDuration(o, "60s", dnsOption, bootstrapOption);
+  configureDnsDuration(o, "60s", dnsOption, bootstrapOption, fallbackDnsOption);
 
   o = section.option(
     form.Value,
@@ -216,7 +414,7 @@ function createSettingsContent(section, capabilities) {
       "Maximum time to wait for example.com to resolve during a DNS health check.",
     ),
   );
-  configureDnsDuration(o, "2s", dnsOption, bootstrapOption);
+  configureDnsDuration(o, "2s", dnsOption, bootstrapOption, fallbackDnsOption);
 
   o = section.option(
     form.Value,

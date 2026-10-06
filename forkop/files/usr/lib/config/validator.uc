@@ -913,8 +913,8 @@ function dns_setting_values(settings, key) {
 
 function validate_dns_settings(settings, sections, context) {
     let dns_type = option(settings, "dns_type", "udp");
-    if (!contains([ "udp", "dot", "doh" ], dns_type))
-        fail_validation("Unsupported DNS protocol type '" + dns_type + "'. Use udp, dot, or doh. Aborted.");
+    if (!contains([ "udp", "dot", "doh", "doq" ], dns_type))
+        fail_validation("Unsupported DNS protocol type '" + dns_type + "'. Use udp, dot, doh, or doq. Aborted.");
 
     let dns_strategy = option(settings, "dns_strategy", "prefer_ipv4");
     if (!contains([ "prefer_ipv4", "ipv4_only", "prefer_ipv6", "ipv6_only" ], dns_strategy))
@@ -937,6 +937,16 @@ function validate_dns_settings(settings, sections, context) {
         validate_required_duration_option(option(settings, "dns_check_interval", "10s"), "settings.dns_check_interval");
         validate_required_duration_option(option(settings, "dns_recovery_check_interval", "60s"), "settings.dns_recovery_check_interval");
         validate_required_duration_option(option(settings, "dns_check_timeout", "2s"), "settings.dns_check_timeout");
+    }
+
+    let fallback_servers = dns_setting_values(settings, "dns_fallback_server");
+    for (let value in fallback_servers) {
+        if (index(value, "://") >= 0)
+            fail_validation("Fallback DNS server '" + value + "' looks like a URL. Fallback servers must be plain UDP (IP or IP:port). Aborted.");
+        if (index(value, "/") >= 0)
+            fail_validation("Fallback DNS server '" + value + "' contains a path. Fallback servers must be plain UDP (IP or IP:port), not DoH path format. Aborted.");
+        if (!dns_server_value_valid(value))
+            fail_validation("Invalid fallback DNS server '" + value + "'. Aborted.");
     }
 
     if (!bool_option(settings, "dns_detour_enabled", false))
@@ -1388,8 +1398,8 @@ function dns_action_has_domain_matchers(section) {
 function validate_dns_action(section, sections, context) {
     let name = section_name(section);
     let dns_type = option(section, "dns_type", "udp");
-    if (!contains([ "udp", "dot", "doh" ], dns_type))
-        fail_validation("DNS rule '" + name + "' uses unsupported protocol '" + dns_type + "'. Use udp, dot, or doh. Aborted.");
+    if (!contains([ "udp", "dot", "doh", "doq" ], dns_type))
+        fail_validation("DNS rule '" + name + "' uses unsupported protocol '" + dns_type + "'. Use udp, dot, doh, or doq. Aborted.");
     let dns_server = option(section, "dns_server", "");
     if (!dns_server_value_valid(dns_server))
         fail_validation("DNS rule '" + name + "' has an invalid DNS server '" + dns_server + "'. Aborted.");
