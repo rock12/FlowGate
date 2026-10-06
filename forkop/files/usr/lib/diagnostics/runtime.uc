@@ -1341,8 +1341,11 @@ function check_dns_available() {
     if (runtime_dns.failover_enabled(cfg)) {
         push(active_dns_args, "-p");
         push(active_dns_args, as_string(runtime_dns.health_port("active", 0)));
+        push(active_dns_args, "@" + runtime_dns.DNS_HEALTH_ADDRESS);
     }
-    push(active_dns_args, "@" + SB_DNS_INBOUND_ADDRESS);
+    else {
+        push(active_dns_args, "@" + SB_DNS_INBOUND_ADDRESS);
+    }
     push(active_dns_args, domain);
     push(active_dns_args, "A");
     push(active_dns_args, "+short");

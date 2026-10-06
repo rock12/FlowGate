@@ -15,6 +15,19 @@ function bool_value(value) {
     return value === true || value == "1" || value == "true" || value == "yes" || value == "on";
 }
 
+function default_domain_resolver_value(settings, runtime) {
+    let resolver_server = type(runtime) == "object" && as_string(runtime.default_domain_resolver) != ""
+        ? as_string(runtime.default_domain_resolver)
+        : runtime_constants.DNS_SERVER_TAG;
+    let strategy = option(settings, "dns_strategy", "");
+    if (strategy != "")
+        return {
+            server: resolver_server,
+            strategy: strategy
+        };
+    return resolver_server;
+}
+
 function config(settings, runtime) {
     let output_network_interface = option(settings, "output_network_interface", "");
     let mwan3_active = type(runtime) == "object" && bool_value(runtime.mwan3_active);
@@ -33,9 +46,7 @@ function config(settings, runtime) {
         rule_set: [],
         final: runtime_constants.DIRECT_OUTBOUND_TAG,
         auto_detect_interface: output_network_interface == "" && !mwan3_active,
-        default_domain_resolver: type(runtime) == "object" && as_string(runtime.default_domain_resolver) != ""
-            ? as_string(runtime.default_domain_resolver)
-            : runtime_constants.DNS_SERVER_TAG,
+        default_domain_resolver: default_domain_resolver_value(settings, runtime),
         default_mark: runtime_constants.OUTBOUND_MARK,
         default_http_client: runtime_constants.DIRECT_OUTBOUND_TAG
     };
