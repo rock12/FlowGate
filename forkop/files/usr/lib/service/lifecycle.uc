@@ -113,6 +113,7 @@ const UDPSPEEDER_UC = LIB_DIR + "/providers/udpspeeder/runtime.uc";
 const PACKAGES_UC = LIB_DIR + "/core/packages.uc";
 const TORRSERVER_UC = LIB_DIR + "/service/torrserver.uc";
 const MTU_UC = LIB_DIR + "/network/mtu.uc";
+const SMART_DETECT_RUNNER_UC = LIB_DIR + "/service/smart_detect_runner.uc";
 
 let start_subscription_update_lock_held = false;
 let subscription_caches_prepared = getenv("FORKOP_SUBSCRIPTION_CACHES_PREPARED") || "0";
@@ -752,6 +753,7 @@ function start_main() {
     module_success(ZAPRET_UC, [ "start-runtime" ]);
     module_success(ZAPRET2_UC, [ "start-runtime" ]);
     module_success(TORRSERVER_UC, [ "reconcile" ]);
+    module_success(SMART_DETECT_RUNNER_UC, [ "start-runtime" ]);
 
     module_background(UPDATES_UC, [ "list-update" ]);
     return 0;
@@ -851,6 +853,7 @@ function stop_main() {
     module_success(ZAPRET2_UC, [ "stop-runtime" ]);
     module_success(BYEDPI_UC, [ "stop-runtime" ]);
     module_success(UDPSPEEDER_UC, [ "stop-runtime" ]);
+    module_success(SMART_DETECT_RUNNER_UC, [ "stop-runtime" ]);
     module_success(TORRSERVER_UC, [ "remove-rule" ]);
 
     if (command_success_from_args([ "nft", "list", "table", "inet", NFT_TABLE_NAME ]))
@@ -1326,6 +1329,7 @@ function reload(reason) {
         module_success(BYEDPI_UC, [ "start-runtime" ]);
     if (plan.needs_udpspeeder_restart == 1)
         module_success(UDPSPEEDER_UC, [ "start-runtime" ]);
+    module_success(SMART_DETECT_RUNNER_UC, [ "start-runtime" ]);
 
     if (plan.needs_dnsmasq_configure == 1) {
         status = dnsmasq_configure(true);

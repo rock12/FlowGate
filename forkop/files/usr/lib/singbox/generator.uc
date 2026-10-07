@@ -1656,12 +1656,46 @@ function add_subscription_download_service_mixed_proxies(config, sections) {
 }
 
 function add_service_mixed_proxy(config, settings, sections) {
-    if (!download_via_proxy_any_enabled(settings, sections))
+    let smart_detect_enabled = bool_option(settings, "smart_detect", false);
+    if (!download_via_proxy_any_enabled(settings, sections) && !smart_detect_enabled)
         return;
 
     add_global_download_service_mixed_proxy(config, settings, "lists");
     add_global_download_service_mixed_proxy(config, settings, "components");
     add_subscription_download_service_mixed_proxies(config, sections);
+
+    if (smart_detect_enabled) {
+        let has_lists_inbound = false;
+        for (let inbound in config.inbounds) {
+            if (inbound.tag == runtime_constants.SERVICE_MIXED_INBOUND_TAG) {
+                has_lists_inbound = true;
+                break;
+            }
+        }
+        if (!has_lists_inbound) {
+            let target_outbound = "";
+            let target_section_name = as_string(settings.smart_detect_section || "");
+            if (target_section_name != "") {
+                target_outbound = outbound_tag(target_section_name);
+            } else {
+                for (let section in sections) {
+                    let action = connections.action(section);
+                    if (mixed_proxy_enabled_action(action)) {
+                        target_outbound = outbound_tag(section[".name"]);
+                        break;
+                    }
+                }
+            }
+            if (target_outbound != "") {
+                add_service_mixed_proxy_inbound(
+                    config,
+                    runtime_constants.SERVICE_MIXED_INBOUND_TAG,
+                    runtime_constants.SERVICE_MIXED_INBOUND_PORT,
+                    target_outbound
+                );
+            }
+        }
+    }
 
     if (download_via_proxy_enabled(settings, "lists") && download_detour_tag(settings, "lists") == "")
         runtime_generate_unsupported("download lists via proxy section is not set");
@@ -2843,6 +2877,24 @@ function ensure_community_ruleset(config, section_name, community) {
         let local_srs = runtime_ruleset_folder + "/community-" + community + ".srs";
         let local_json = runtime_ruleset_folder + "/community-" + community + ".json";
 
+        if (community == "twitch" && !fs.stat(local_srs) && !fs.stat(local_json)) {
+            let twitch_obj = {
+                version: 3,
+                rules: [
+                    {
+                        domain: [
+                            "usher.ttvnw.net",
+                            "player.stats.live-video.net",
+                            "prod.ivs-device-config.live-video.net",
+                            "gql.twitch.tv",
+                            "ads.twitch.tv"
+                        ]
+                    }
+                ]
+            };
+            fs.writefile(local_json, sprintf("%J\n", twitch_obj));
+        }
+
         if (fs.stat(local_srs)) {
             push(config.route.rule_set, {
                 type: "local",
@@ -3008,6 +3060,12 @@ function combined_domain_source_values(section) {
         if (as_string(value) != "")
             push(values, as_string(value));
     for (let value in list_option(section, "domain_suffix"))
+        if (as_string(value) != "")
+            push(values, as_string(value));
+    for (let value in list_option(section, "user_domains"))
+        if (as_string(value) != "")
+            push(values, as_string(value));
+    for (let value in rule_config.text_list_values(option(section, "user_domains_text", ""), "comma-space"))
         if (as_string(value) != "")
             push(values, as_string(value));
     return values;

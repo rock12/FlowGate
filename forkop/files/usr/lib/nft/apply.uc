@@ -838,8 +838,34 @@ function nft_create_runtime_base(table, localv4_set, common_set, port_set, ip_po
         !nft_add_rule(table, "mangle", [ "ct", "status", "dnat", "return" ]) ||
         !nft_add_rule(table, "mangle", [ "iifname", "@" + as_string(interface_set), "ip", "daddr", "@" + as_string(localv4_set), "return" ]) ||
         !nft_add_rule(table, "mangle", [ "iifname", "@" + as_string(interface_set), "ip6", "daddr", "@" + as_string(localv6_set), "ip6", "daddr", "!=", fakeip6_range, "return" ]) ||
-        !nft_add_rule(table, "mangle", [ "jump", "priority_rules" ]) ||
-        !nft_add_rule(table, "mangle", [ "iifname", "@" + as_string(interface_set), "ip", "daddr", "@" + as_string(common_set), "meta", "l4proto", "tcp", "meta", "mark", "set", fakeip_mark, "counter" ]) ||
+        !nft_add_rule(table, "mangle", [ "jump", "priority_rules" ]))
+        return false;
+
+    let console_ips_list = list_option(uci_settings(), "game_console_ips");
+    if (bool_option(uci_settings(), "game_console_optimizer", false) && length(console_ips_list) > 0) {
+        let v4_ips = [];
+        let v6_ips = [];
+        for (let ip in console_ips_list) {
+            ip = trim(as_string(ip));
+            if (ip == "") continue;
+            if (core_ip.ip_family(ip) == 4) push(v4_ips, ip);
+            else if (core_ip.ip_family(ip) == 6) push(v6_ips, ip);
+        }
+        if (length(v4_ips) > 0) {
+            if (!nft_create_ipv4_set(table, "forkop_consoles") ||
+                !nft_add_set_elements(table, "forkop_consoles", join(",", v4_ips)) ||
+                !nft_add_rule(table, "mangle", [ "iifname", "@" + as_string(interface_set), "ip", "saddr", "@forkop_consoles", "meta", "l4proto", "udp", "counter", "return" ]))
+                return false;
+        }
+        if (length(v6_ips) > 0) {
+            if (!nft_create_ipv6_set(table, "forkop_consoles6") ||
+                !nft_add_set_elements(table, "forkop_consoles6", join(",", v6_ips)) ||
+                !nft_add_rule(table, "mangle", [ "iifname", "@" + as_string(interface_set), "ip6", "saddr", "@forkop_consoles6", "meta", "l4proto", "udp", "counter", "return" ]))
+                return false;
+        }
+    }
+
+    if (!nft_add_rule(table, "mangle", [ "iifname", "@" + as_string(interface_set), "ip", "daddr", "@" + as_string(common_set), "meta", "l4proto", "tcp", "meta", "mark", "set", fakeip_mark, "counter" ]) ||
         !nft_add_rule(table, "mangle", [ "iifname", "@" + as_string(interface_set), "ip", "daddr", "@" + as_string(common_set), "meta", "l4proto", "udp", "meta", "mark", "set", fakeip_mark, "counter" ]) ||
         !nft_add_rule(table, "mangle", [ "iifname", "@" + as_string(interface_set), "ip6", "daddr", "@" + as_string(common6_set), "meta", "l4proto", "tcp", "meta", "mark", "set", fakeip_mark, "counter" ]) ||
         !nft_add_rule(table, "mangle", [ "iifname", "@" + as_string(interface_set), "ip6", "daddr", "@" + as_string(common6_set), "meta", "l4proto", "udp", "meta", "mark", "set", fakeip_mark, "counter" ]) ||
@@ -854,8 +880,17 @@ function nft_create_runtime_base(table, localv4_set, common_set, port_set, ip_po
         !nft_add_rule(table, "mangle", [ "iifname", "@" + as_string(interface_set), "ip", "daddr", fakeip_range, "meta", "l4proto", "tcp", "meta", "mark", "set", fakeip_mark, "counter" ]) ||
         !nft_add_rule(table, "mangle", [ "iifname", "@" + as_string(interface_set), "ip", "daddr", fakeip_range, "meta", "l4proto", "udp", "meta", "mark", "set", fakeip_mark, "counter" ]) ||
         !nft_add_rule(table, "mangle", [ "iifname", "@" + as_string(interface_set), "ip6", "daddr", fakeip6_range, "meta", "l4proto", "tcp", "meta", "mark", "set", fakeip_mark, "counter" ]) ||
-        !nft_add_rule(table, "mangle", [ "iifname", "@" + as_string(interface_set), "ip6", "daddr", fakeip6_range, "meta", "l4proto", "udp", "meta", "mark", "set", fakeip_mark, "counter" ]) ||
-        !nft_add_rule(table, "proxy", [ "meta", "mark", "&", fakeip_mark, "==", fakeip_mark, "meta", "l4proto", "tcp", "tproxy", "ip", "to", ":" + as_string(tproxy_port), "counter" ]) ||
+        !nft_add_rule(table, "mangle", [ "iifname", "@" + as_string(interface_set), "ip6", "daddr", fakeip6_range, "meta", "l4proto", "udp", "meta", "mark", "set", fakeip_mark, "counter" ]))
+        return false;
+
+    if (bool_option(uci_settings(), "smart_detect", false) &&
+        option(uci_settings(), "smart_detect_mode", "default") == "plus") {
+        if (!nft_add_rule(table, "mangle", [ "iifname", "@" + as_string(interface_set), "ip", "daddr", "!=", "@" + as_string(localv4_set), "meta", "mark", "0", "tcp", "dport", "{ 80, 443 }", "meta", "mark", "set", fakeip_mark, "counter", "comment", "\"forkop-smart-detect\"" ]) ||
+            !nft_add_rule(table, "mangle", [ "iifname", "@" + as_string(interface_set), "ip6", "daddr", "!=", "@" + as_string(localv6_set), "meta", "mark", "0", "tcp", "dport", "{ 80, 443 }", "meta", "mark", "set", fakeip_mark, "counter", "comment", "\"forkop-smart-detect\"" ]))
+            return false;
+    }
+
+    if (!nft_add_rule(table, "proxy", [ "meta", "mark", "&", fakeip_mark, "==", fakeip_mark, "meta", "l4proto", "tcp", "tproxy", "ip", "to", ":" + as_string(tproxy_port), "counter" ]) ||
         !nft_add_rule(table, "proxy", [ "meta", "mark", "&", fakeip_mark, "==", fakeip_mark, "meta", "l4proto", "udp", "tproxy", "ip", "to", ":" + as_string(tproxy_port), "counter" ]) ||
         !nft_add_rule(table, "proxy", [ "meta", "mark", "&", fakeip_mark, "==", fakeip_mark, "meta", "l4proto", "tcp", "tproxy", "ip6", "to", core_ip.format_ipv6_tproxy_target(tproxy6_address, tproxy_port), "counter" ]) ||
         !nft_add_rule(table, "proxy", [ "meta", "mark", "&", fakeip_mark, "==", fakeip_mark, "meta", "l4proto", "udp", "tproxy", "ip6", "to", core_ip.format_ipv6_tproxy_target(tproxy6_address, tproxy_port), "counter" ]) ||
@@ -1453,6 +1488,12 @@ function nft_runtime_signature_from_settings_and_sections(settings, sections) {
 
     body = signature_add_value(body, "settings.source_network_interfaces", option(settings, "source_network_interfaces", "br-lan"));
     body = signature_add_value(body, "settings.exclude_ntp", bool_option(settings, "exclude_ntp", false) ? "1" : "0");
+    if (bool_option(settings, "smart_detect", false) && option(settings, "smart_detect_mode", "default") == "plus")
+        body = signature_add_value(body, "settings.smart_detect_plus", "1");
+    if (bool_option(settings, "game_console_optimizer", false)) {
+        body = signature_add_value(body, "settings.game_console_optimizer", "1");
+        body = signature_add_value(body, "settings.game_console_ips", option(settings, "game_console_ips", ""));
+    }
 
     for (let section in sections)
         body = nft_rule_signature_body(body, object_or_empty(section));

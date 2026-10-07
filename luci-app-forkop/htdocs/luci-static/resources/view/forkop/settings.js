@@ -917,6 +917,130 @@ function createSettingsContent(section, capabilities) {
   o.rmempty = false;
 
   o = section.option(
+    form.Flag,
+    "game_console_optimizer",
+    _("Game Console Optimizer (NAT Type 1)"),
+    _(
+      "Bypasses UDP traffic for selected game consoles (PS5/Xbox) to achieve NAT Type 1 / 2 (Full Cone NAT) for P2P matchmaking, while keeping TCP (PSN/Auth) routed through the proxy.",
+    ),
+  );
+  o.default = "0";
+  o.rmempty = false;
+
+  const gameConsoleIpsOpt = section.option(
+    form.DynamicList,
+    "game_console_ips",
+    _("Game Console IPs"),
+    _("Select or enter the IP addresses of your game consoles."),
+  );
+  gameConsoleIpsOpt.depends("game_console_optimizer", "1");
+  gameConsoleIpsOpt.datatype = "ipaddr";
+
+  o = section.option(
+    form.Flag,
+    "smart_detect",
+    _("Enable Smart Detect"),
+    _(
+      "Auto-detects blocked domains from logs and adds them to the first section where they work via proxy.",
+    ),
+  );
+  o.default = "0";
+  o.rmempty = false;
+
+  const smartDetectDescriptions = {
+    default: _(
+      "Default: uses sing-box error logs and HTTPS HEAD probes. Adds the detected hostname after repeated Direct failures confirmed at least 120 seconds apart and a successful shared proxy probe.",
+    ),
+    plus: _(
+      "Plus: also watches stalled LAN HTTP/HTTPS connections and checks full GET responses. Two failed Direct GET probes and a successful shared proxy GET are required. Saves the main domain with its subdomains using the Public Suffix List. DNS resolution and local certificate errors defer detection.",
+    ),
+  };
+
+  o = section.option(
+    form.ListValue,
+    "smart_detect_mode",
+    _("Smart Detect mode"),
+    smartDetectDescriptions.default,
+  );
+  o.value("default", _("Default (logs)"));
+  o.value("plus", _("Plus (stalled web connections)"));
+  o.default = "default";
+  o.rmempty = false;
+  o.depends("smart_detect", "1");
+  o.cfgvalue = function (section_id) {
+    return uci.get(UCI_PACKAGE, section_id, "smart_detect_mode") === "plus"
+      ? "plus"
+      : "default";
+  };
+  const smartDetectRenderWidget = o.renderWidget;
+  o.renderWidget = function (section_id, option_index, cfgvalue) {
+    this.description =
+      smartDetectDescriptions[cfgvalue === "plus" ? "plus" : "default"];
+    return smartDetectRenderWidget.call(
+      this,
+      section_id,
+      option_index,
+      cfgvalue,
+    );
+  };
+  o.onchange = function (_ev, section_id, value) {
+    this.description =
+      smartDetectDescriptions[value === "plus" ? "plus" : "default"];
+    const field = this.map.findElement("data-field", this.cbid(section_id));
+    const description = field && field.querySelector(".cbi-value-description");
+    if (description) description.textContent = this.description;
+  };
+
+  o = section.option(
+    form.Flag,
+    "smart_detect_exclude_ru",
+    _("Exclude Russian and Banking domains"),
+    _(
+      "Prevents .ru, .su, .рф domains and major Russian ecosystems (VK, Yandex, Sber, T-Bank, Gosuslugi) from being auto-added to proxy sections.",
+    ),
+  );
+  o.default = "1";
+  o.rmempty = false;
+  o.depends("smart_detect", "1");
+
+  o = section.option(
+    form.DynamicList,
+    "smart_detect_exclude_domains",
+    _("Additional excluded domains"),
+    _(
+      "Domains that must never be auto-detected or routed through proxy sections.",
+    ),
+  );
+  o.depends("smart_detect", "1");
+
+  const smartDetectSecOpt = section.option(
+    form.ListValue,
+    "smart_detect_section",
+    _("Target proxy section"),
+    _(
+      "Select the proxy section where confirmed blocked domains will be automatically added.",
+    ),
+  );
+  smartDetectSecOpt.depends("smart_detect", "1");
+  smartDetectSecOpt.load = function (section_id) {
+    this.keylist = [];
+    this.vallist = [];
+    const sections = uci.sections(UCI_PACKAGE);
+    for (const sec of sections) {
+      if (
+        sec[".type"] === "section" &&
+        sec.enabled !== "0" &&
+        sec.action !== "bypass" &&
+        sec.action !== "block" &&
+        sec.action !== "dns"
+      ) {
+        this.value(sec[".name"], sec.label || sec[".name"]);
+      }
+    }
+    return uci.get(UCI_PACKAGE, section_id, "smart_detect_section") || "";
+  };
+
+  o = section.option(
     form.Button,
     "_mtu_fix_btn",
     _("MTU & Double NAT Optimization"),

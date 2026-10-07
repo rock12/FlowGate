@@ -1013,7 +1013,8 @@ var DOMAIN_LIST_OPTIONS = {
   wz_gemini: "Google Gemini",
   wz_copilot: "Microsoft Copilot",
   wz_adobe: "Adobe",
-  wz_netflix: "Netflix"
+  wz_netflix: "Netflix",
+  twitch: "Twitch"
 };
 var DNS_SERVER_OPTIONS = {
   "1.1.1.1": "1.1.1.1 (Cloudflare)",

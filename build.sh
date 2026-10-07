@@ -168,6 +168,7 @@ build_backend_root() {
   make_dir "$output_root/etc/config"
   make_dir "$output_root/usr/bin"
   make_dir "$output_root/usr/lib/forkop"
+  make_dir "$output_root/usr/share/forkop"
 
   install -m 0755 "$ROOT_DIR/forkop/files/etc/init.d/flowgate" "$output_root/etc/init.d/flowgate"
   install -m 0644 "$ROOT_DIR/forkop/files/etc/config/forkop" "$output_root/etc/config/forkop"
@@ -175,6 +176,7 @@ build_backend_root() {
   install -m 0755 "$ROOT_DIR/forkop/files/usr/bin/forkop" "$output_root/usr/bin/forkop"
   ln -sf forkop "$output_root/usr/bin/flowgate"
   cp -a "$ROOT_DIR/forkop/files/usr/lib/." "$output_root/usr/lib/forkop/"
+  cp -a "$ROOT_DIR/forkop/files/usr/share/forkop/." "$output_root/usr/share/forkop/"
 
   sed -i -e "s/__COMPILED_VERSION_VARIABLE__/${RELEASE_VERSION}/g" \
     "$output_root/usr/lib/forkop/core/constants.uc"

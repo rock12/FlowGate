@@ -2440,3 +2440,58 @@ msgstr "Скопировать команду Docker"
 
 msgid "Copied!"
 msgstr "Скопировано!"
+
+msgid "Twitch"
+msgstr "Twitch"
+
+msgid "Game Console Optimizer (NAT Type 1)"
+msgstr "Оптимизация игровых консолей (NAT Type 1)"
+
+msgid "Bypasses UDP traffic for selected game consoles (PS5/Xbox) to achieve NAT Type 1 / 2 (Full Cone NAT) for P2P matchmaking, while keeping TCP (PSN/Auth) routed through the proxy."
+msgstr "Пропускает UDP-трафик выбранных игровых консолей (PS5/Xbox) напрямую для получения NAT Type 1 / 2 (Full Cone NAT) в играх и P2P-матчмейкинге, сохраняя TCP (PSN/авторизацию) через прокси."
+
+msgid "Game Console IPs"
+msgstr "IP-адреса игровых консолей"
+
+msgid "Select or enter the IP addresses of your game consoles."
+msgstr "Выберите или введите IP-адреса ваших игровых консолей."
+
+msgid "Enable Smart Detect"
+msgstr "Включить Smart Detect"
+
+msgid "Auto-detects blocked domains from logs and adds them to the first section where they work via proxy."
+msgstr "Автоматически обнаруживает заблокированные домены и добавляет их в секцию, через которую они работают."
+
+msgid "Smart Detect mode"
+msgstr "Режим Smart Detect"
+
+msgid "Default (logs)"
+msgstr "Стандартный (по логам)"
+
+msgid "Plus (stalled web connections)"
+msgstr "Plus (по зависшим веб-соединениям)"
+
+msgid "Default: uses sing-box error logs and HTTPS HEAD probes. Adds the detected hostname after repeated Direct failures confirmed at least 120 seconds apart and a successful shared proxy probe."
+msgstr "Стандартный: анализирует ошибки в логах sing-box и выполняет HEAD-проверки по HTTPS. Добавляет домен после повторных сбоев прямого подключения (с интервалом не менее 120 с) и успешной проверки через прокси."
+
+msgid "Plus: also watches stalled LAN HTTP/HTTPS connections and checks full GET responses. Two failed Direct GET probes and a successful shared proxy GET are required. Saves the main domain with its subdomains using the Public Suffix List. DNS resolution and local certificate errors defer detection."
+msgstr "Plus: также отслеживает зависшие LAN-соединения HTTP/HTTPS и проверяет полные GET-ответы. Требуется 2 неудачных прямых GET-запроса и успешный GET-запрос через прокси. Сохраняет регистрируемый домен вместе с поддоменами через Public Suffix List."
+
+msgid "Exclude Russian and Banking domains"
+msgstr "Исключать домены РФ и банковские сервисы"
+
+msgid "Prevents .ru, .su, .рф domains and major Russian ecosystems (VK, Yandex, Sber, T-Bank, Gosuslugi) from being auto-added to proxy sections."
+msgstr "Предотвращает автоматическое добавление доменов .ru, .su, .рф и крупных российских сервисов (VK, Яндекс, Сбер, Т-Банк, Госуслуги) в секции прокси."
+
+msgid "Additional excluded domains"
+msgstr "Дополнительные домены-исключения"
+
+msgid "Domains that must never be auto-detected or routed through proxy sections."
+msgstr "Домены, которые никогда не должны автоматически обнаруживаться или направляться через прокси."
+
+msgid "Target proxy section"
+msgstr "Целевая секция прокси"
+
+msgid "Select the proxy section where confirmed blocked domains will be automatically added."
+msgstr "Выберите секцию прокси, в которую будут автоматически добавляться подтвержденные заблокированные домены."
+

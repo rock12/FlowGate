@@ -50,7 +50,8 @@ const COMMUNITY_SERVICES = {
     wz_gemini: true,
     wz_copilot: true,
     wz_adobe: true,
-    wz_netflix: true
+    wz_netflix: true,
+    twitch: true
 };
 
 const COMMUNITY_URL_OVERRIDES = {

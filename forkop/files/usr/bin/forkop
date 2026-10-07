@@ -203,7 +203,9 @@ function command_spec(command) {
         reconcile_torrserver: [ "service/torrserver.uc", "reconcile", 0 ],
         package_prerm: [ "service/package.uc", "prerm", 1 ],
         package_postinst: [ "service/package.uc", "postinst", 0 ],
-        luci_postinst: [ "service/package.uc", "luci-postinst", 0 ]
+        luci_postinst: [ "service/package.uc", "luci-postinst", 0 ],
+        smart_detect_run: [ "service/smart_detect_runner.uc", "run-once", 0 ],
+        get_smart_detect_status: [ "service/smart_detect_runner.uc", "status", 0 ]
     };
 
     return commands[as_string(command)];

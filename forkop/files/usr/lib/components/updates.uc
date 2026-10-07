@@ -2121,6 +2121,27 @@ function import_builtin_subnets_from_rule(section, settings) {
         if (!singbox_rulesets_module().is_community(service))
             continue;
 
+        if (service == "twitch") {
+            ensure_dir(TMP_RULESET_FOLDER);
+            let twitch_json = TMP_RULESET_FOLDER + "/community-twitch.json";
+            let twitch_obj = {
+                version: 3,
+                rules: [
+                    {
+                        domain: [
+                            "usher.ttvnw.net",
+                            "player.stats.live-video.net",
+                            "prod.ivs-device-config.live-video.net",
+                            "gql.twitch.tv",
+                            "ads.twitch.tv"
+                        ]
+                    }
+                ]
+            };
+            fs.writefile(twitch_json, sprintf("%J\n", twitch_obj));
+            continue;
+        }
+
         let urls = BUILTIN_SUBNET_URLS[as_string(service)];
         if (type(urls) == "array") {
             for (let url in urls) {

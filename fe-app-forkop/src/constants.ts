@@ -58,6 +58,7 @@ export const DOMAIN_LIST_OPTIONS = {
   wz_copilot: 'Microsoft Copilot',
   wz_adobe: 'Adobe',
   wz_netflix: 'Netflix',
+  twitch: 'Twitch',
 };
 
 export const DNS_SERVER_OPTIONS = {
