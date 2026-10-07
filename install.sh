@@ -2078,6 +2078,10 @@ EOF
         uci commit dhcp 2>/dev/null || true
         /etc/init.d/odhcpd reload >/dev/null 2>&1 || true
     fi
+
+    [ -d /opt ] && chmod 755 /opt || true
+    [ -d /opt/zapret2 ] && chmod -R a+rX /opt/zapret2 || true
+    [ -d /opt/zapret ] && chmod -R a+rX /opt/zapret || true
 }
 
 main() {

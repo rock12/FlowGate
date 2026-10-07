@@ -142,4 +142,9 @@ if ! command -v udpspeeder >/dev/null 2>&1 && ! command -v speederv2 >/dev/null 
     rm -rf "$TMP_SPEEDER" 2>/dev/null || true
 fi
 
+msg "==> Настройка прав доступа на каталоги провайдеров (/opt)..."
+[ -d /opt ] && chmod 755 /opt || true
+[ -d /opt/zapret2 ] && chmod -R a+rX /opt/zapret2 || true
+[ -d /opt/zapret ] && chmod -R a+rX /opt/zapret || true
+
 msg "==> Все зависимости успешно проверены и установлены!"

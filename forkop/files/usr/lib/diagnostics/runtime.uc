@@ -1849,8 +1849,48 @@ function global_check(arg1, arg2) {
     else
         print_global("❌ Failed to get NFT rules info");
 
+    let zapret2_status_capture = command_capture(command_from_args(module_args(ZAPRET2_RUNTIME_UC, [ "status" ])));
+    if (zapret2_status_capture.output != "") {
+        let z2 = json(zapret2_status_capture.output);
+        if (z2 && z2.configured) {
+            print_global("━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            print_global("🧵 Zapret2 status");
+            render_or_fail([ "global-provider-check", "zapret2" ], zapret2_status_capture.output, "❌ Failed to parse Zapret2 info", [ 0 ]);
+        }
+    }
+
+    let zapret_status_capture = command_capture(command_from_args(module_args(ZAPRET_RUNTIME_UC, [ "status" ])));
+    if (zapret_status_capture.output != "") {
+        let z1 = json(zapret_status_capture.output);
+        if (z1 && z1.configured) {
+            print_global("━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            print_global("🧵 Zapret status");
+            render_or_fail([ "global-provider-check", "zapret" ], zapret_status_capture.output, "❌ Failed to parse Zapret info", [ 0 ]);
+        }
+    }
+
+    let byedpi_status_capture = command_capture(command_from_args(module_args(BYEDPI_RUNTIME_UC, [ "status" ])));
+    if (byedpi_status_capture.output != "") {
+        let bd = json(byedpi_status_capture.output);
+        if (bd && bd.configured) {
+            print_global("━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            print_global("⚡ ByeDPI status");
+            render_or_fail([ "global-provider-check", "byedpi" ], byedpi_status_capture.output, "❌ Failed to parse ByeDPI info", [ 0 ]);
+        }
+    }
+
+    let udpspeeder_status_capture = command_capture(command_from_args(module_args(UDPSPEEDER_RUNTIME_UC, [ "status" ])));
+    if (udpspeeder_status_capture.output != "") {
+        let us = json(udpspeeder_status_capture.output);
+        if (us && us.configured) {
+            print_global("━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            print_global("🚀 UDPspeeder status");
+            render_or_fail([ "global-provider-check", "udpspeeder" ], udpspeeder_status_capture.output, "❌ Failed to parse UDPspeeder info", [ 0 ]);
+        }
+    }
+
     print_global("━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    print_global("📄 Forkop config");
+    print_global("📄 FlowGate config");
     show_config(visibility);
 
     print_global("━━━━━━━━━━━━━━━━━━━━━━━━━━━");

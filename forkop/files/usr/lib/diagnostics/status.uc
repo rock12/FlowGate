@@ -1383,7 +1383,7 @@ function render_global_system_info() {
     let sing_box_core = sing_box_core_label(value) || "regular";
     print_line("Sing-box core: " + sing_box_core);
 
-    print_line("\ud83d\udd73\ufe0f Forkop:   " + forkop_version);
+    print_line("\ud83d\udd73\ufe0f FlowGate: " + forkop_version);
     print_line("\ud83d\udd73\ufe0f LuCI App:      " + luci_app_version);
     print_line("\ud83d\udce6 Sing-box:      " + format_sing_box_version(value, sing_box_version));
     if (flag_is_one(value.zapret_installed))
@@ -1394,6 +1394,39 @@ function render_global_system_info() {
         print_line("\ud83e\uddf5 ByeDPI:        " + byedpi_version);
     print_line("\ud83d\udedc OpenWrt:       " + openwrt_version);
     print_line("\ud83d\udedc Device:        " + device_model);
+}
+
+function render_global_provider_check(provider_name) {
+    let value = object_or_empty(read_stdin_json());
+    let title = provider_name == "zapret2" ? "Zapret2" :
+                provider_name == "zapret" ? "Zapret" :
+                provider_name == "byedpi" ? "ByeDPI" :
+                provider_name == "udpspeeder" ? "UDPspeeder" : provider_name;
+
+    if (flag_is_true(value.provider_available) || flag_is_true(value.installed))
+        print_line("\u2705 " + title + " installed");
+    else
+        print_line("\u274c " + title + " not installed");
+
+    if (value.version)
+        print_line(title + " version: " + value.version);
+
+    if (flag_is_true(value.configured)) {
+        let running = int(value.running_process_count || 0);
+        let expected = int(value.expected_process_count || 0);
+        if (running > 0 && running >= expected)
+            print_line("\u2705 " + title + " process running (" + running + "/" + expected + ")");
+        else if (running > 0)
+            print_line("\u26a0\ufe0f " + title + " process partially running (" + running + "/" + expected + ")");
+        else
+            print_line("\u274c " + title + " process not running (0/" + expected + ")");
+
+        if (value.queue_base)
+            print_line("\u2705 " + title + " queue: " + value.queue_base);
+
+        if (flag_is_true(value.conflict) || flag_is_true(value.standalone_conflict))
+            print_line("\u26a0\ufe0f " + title + " has conflicting standalone service");
+    }
 }
 
 function render_global_fakeip_check() {
@@ -1975,6 +2008,8 @@ else if (mode == "global-sing-box-check")
     render_global_sing_box_check();
 else if (mode == "global-system-info")
     render_global_system_info();
+else if (mode == "global-provider-check")
+    render_global_provider_check(ARGV[1]);
 else if (mode == "global-fakeip-check")
     render_global_fakeip_check();
 else if (mode == "global-dns-check")

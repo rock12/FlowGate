@@ -480,12 +480,16 @@ function start_runtime(cfg) {
         exit(1);
     }
 
+    if (fs.stat("/opt") != null)
+        command_success_from_args([ "chmod", "755", "/opt" ]);
     if (cfg.provider_files_dir != "" && fs.stat(cfg.provider_files_dir) != null)
         command_success_from_args([ "chmod", "-R", "a+rX", cfg.provider_files_dir ]);
     if (cfg.provider_lua_dir != "" && fs.stat(cfg.provider_lua_dir) != null)
         command_success_from_args([ "chmod", "-R", "a+rX", cfg.provider_lua_dir ]);
-    if (cfg.kind == "zapret2" && fs.stat("/opt/zapret2") != null)
-        command_success_from_args([ "chmod", "a+rx", "/opt/zapret2" ]);
+    if (fs.stat("/opt/zapret2") != null)
+        command_success_from_args([ "chmod", "-R", "a+rX", "/opt/zapret2" ]);
+    if (fs.stat("/opt/zapret") != null)
+        command_success_from_args([ "chmod", "-R", "a+rX", "/opt/zapret" ]);
     if (cfg.provider_bin != "" && fs.stat(cfg.provider_bin) != null)
         command_success_from_args([ "chmod", "755", cfg.provider_bin ]);
 

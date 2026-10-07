@@ -1051,6 +1051,8 @@ function install_zapret_like(component, action, runtime_module, resolve_fn, labe
         if (!file_exists(binary_src))
             action_fail(component, action, "Binary nfqws2 for " + release.arch + " not found in archive", current_version, release.version, "", release.release_url || "");
 
+        ensure_dir("/opt");
+        command_success_from_args([ "chmod", "755", "/opt" ]);
         ensure_dir("/opt/zapret2/nfq2");
         ensure_dir("/opt/zapret2/lua");
         ensure_dir("/opt/zapret2/files");
@@ -1071,6 +1073,7 @@ function install_zapret_like(component, action, runtime_module, resolve_fn, labe
         if (fs.stat(top_dir + "/ipset") != null)
             command_success_from_args([ "sh", "-c", "cp -rf " + shell_quote(top_dir + "/ipset") + "/* /opt/zapret2/ipset/ 2>/dev/null || true" ]);
 
+        command_success_from_args([ "chmod", "755", "/opt" ]);
         command_success_from_args([ "chmod", "-R", "a+rX", "/opt/zapret2" ]);
         command_success_from_args([ "chmod", "755", "/opt/zapret2/nfq2/nfqws2" ]);
 

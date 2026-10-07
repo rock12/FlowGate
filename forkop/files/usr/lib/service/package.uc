@@ -148,6 +148,13 @@ function postinst_restore() {
 
         if (path_exists("/etc/init.d/flowgate"))
             command_success_from_args([ "/etc/init.d/flowgate", "enable" ]);
+
+        if (path_exists("/opt"))
+            command_success_from_args([ "chmod", "755", "/opt" ]);
+        if (path_exists("/opt/zapret2"))
+            command_success_from_args([ "chmod", "-R", "a+rX", "/opt/zapret2" ]);
+        if (path_exists("/opt/zapret"))
+            command_success_from_args([ "chmod", "-R", "a+rX", "/opt/zapret" ]);
     }
 
     if (!path_exists(PACKAGE_UPGRADE_STATE))
