@@ -669,6 +669,9 @@ msgstr ""
 msgid "DNS over TLS (DoT)"
 msgstr ""
 
+msgid "DNS over QUIC (DoQ)"
+msgstr ""
+
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2413
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:7063
 msgid "DNS protocol"
@@ -1053,6 +1056,27 @@ msgstr ""
 
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/server.js:3045
 msgid "Fallback on unknown DC"
+msgstr ""
+
+msgid "Fallback DNS Servers"
+msgstr ""
+
+msgid "Plain-UDP DNS servers used as a last resort when all primary DNS fail. These are always unencrypted (no DoH/DoT). Example: 1.1.1.1, 8.8.8.8. Unlike the ISP fallback toggle, these are your own chosen servers."
+msgstr ""
+
+msgid "Fallback DNS servers must be plain UDP (IP or hostname). DoH/DoT URLs are not allowed here."
+msgstr ""
+
+msgid "Enable WAN DNS Fallback for Main DNS"
+msgstr ""
+
+msgid "Enable WAN DNS Fallback for Bootstrap DNS"
+msgstr ""
+
+msgid "⚠️ If all Main DNS fail 3 times, queries will be sent to your ISP's DNS in plaintext. Only use as a last resort to prevent complete internet loss."
+msgstr ""
+
+msgid "⚠️ If all Bootstrap DNS fail 3 times, queries will be sent to your ISP's DNS in plaintext. Only use as a last resort to prevent complete internet loss."
 msgstr ""
 
 #: ../luci-app-forkop/htdocs/luci-static/resources/view/forkop/section.js:2989

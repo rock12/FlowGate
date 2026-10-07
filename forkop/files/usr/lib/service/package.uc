@@ -15,7 +15,7 @@ function env(name, fallback) {
 const CONFIG_NAME = env("FORKOP_CONFIG_NAME", "forkop");
 const RT_TABLES_PATH = env("FORKOP_RT_TABLES", "/etc/iproute2/rt_tables");
 const BIN_PATH = env("FORKOP_BIN", "/usr/bin/forkop");
-const INIT_PATH = env("FORKOP_INIT", "/etc/init.d/forkop");
+const INIT_PATH = env("FORKOP_INIT", "/etc/init.d/flowgate");
 const DNS_APPLY_UC = env("FORKOP_DNS_APPLY_UC", "/usr/lib/forkop/dns/apply.uc");
 const SING_BOX_INIT = env("FORKOP_SING_BOX_INIT", "/etc/init.d/sing-box");
 const SING_BOX_BIN = env("FORKOP_SING_BOX_BIN", "/usr/bin/sing-box");
@@ -115,7 +115,8 @@ function remember_upgrade_state(action) {
         return;
     }
 
-    if (command_success_from_args([ INIT_PATH, "status" ]))
+    if (command_success_from_args([ INIT_PATH, "status" ]) ||
+        (path_exists("/etc/init.d/forkop") && command_success_from_args([ "/etc/init.d/forkop", "status" ])))
         fs.writefile(PACKAGE_UPGRADE_STATE, "1\n");
 }
 
@@ -125,7 +126,10 @@ function prerm_cleanup(action) {
 
     remember_upgrade_state(action);
     if (!PACKAGE_TEST_MODE) {
-        command_success_from_args([ INIT_PATH, "stop" ]);
+        if (path_exists(INIT_PATH))
+            command_success_from_args([ INIT_PATH, "stop" ]);
+        else if (path_exists("/etc/init.d/forkop"))
+            command_success_from_args([ "/etc/init.d/forkop", "stop" ]);
         restore_dnsmasq_if_needed();
         remove_managed_sing_box();
     }
@@ -133,7 +137,20 @@ function prerm_cleanup(action) {
 }
 
 function postinst_restore() {
-    if (env("IPKG_INSTROOT", "") != "" || !path_exists(PACKAGE_UPGRADE_STATE))
+    if (env("IPKG_INSTROOT", "") != "")
+        return true;
+
+    if (!PACKAGE_TEST_MODE) {
+        if (path_exists("/etc/init.d/forkop"))
+            unlink_if_exists("/etc/init.d/forkop");
+        for (let path in fs.glob("/etc/rc.d/*forkop*"))
+            unlink_if_exists(path);
+
+        if (path_exists("/etc/init.d/flowgate"))
+            command_success_from_args([ "/etc/init.d/flowgate", "enable" ]);
+    }
+
+    if (!path_exists(PACKAGE_UPGRADE_STATE))
         return true;
 
     if (!command_success_from_args([ INIT_PATH, "start" ]))

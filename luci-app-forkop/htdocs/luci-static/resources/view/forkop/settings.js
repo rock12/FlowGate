@@ -162,6 +162,7 @@ const settingsDnsDynamicState = {
   widget: null,
   option: null,
   refreshers: new Map(),
+  valuesByProtocol: {},
 };
 
 function configureDnsDynamicList(option, getChoices, defaultValue) {
@@ -179,6 +180,11 @@ function configureDnsDynamicList(option, getChoices, defaultValue) {
   };
   option.renderWidget = function (section_id, _option_index, cfgvalue) {
     const values = L.toArray(cfgvalue != null ? cfgvalue : this.default);
+    const initialType = uci.get(UCI_PACKAGE, section_id, "dns_type") || "udp";
+    settingsDnsDynamicState.dnsType = initialType;
+    if (values && values.length > 0) {
+      settingsDnsDynamicState.valuesByProtocol[initialType] = values.slice();
+    }
     const choices = getChoices(section_id, values);
     const labels = {};
     choices.forEach((choice) => {
@@ -340,17 +346,35 @@ function createSettingsContent(section, capabilities) {
 
   dnsTypeOption.onchange = function (_ev, section_id, value) {
     const newType = value || "udp";
-    if (newType === settingsDnsDynamicState.dnsType) return;
-    settingsDnsDynamicState.dnsType = newType;
+    const oldType = settingsDnsDynamicState.dnsType || "udp";
+    if (newType === oldType) return;
 
     const widget = settingsDnsDynamicState.widget;
     if (widget) {
+      const currentValues = widget.getValue();
+      const currentList = Array.isArray(currentValues)
+        ? currentValues.map((v) => `${v || ""}`.trim()).filter(Boolean)
+        : [];
+      if (currentList.length > 0) {
+        settingsDnsDynamicState.valuesByProtocol[oldType] = currentList;
+      }
+
+      let targetServers = settingsDnsDynamicState.valuesByProtocol[newType];
+      if (!targetServers || !targetServers.length) {
+        targetServers = getDefaultDnsServers(newType);
+      }
+
       const choices = getDnsServerChoices(newType);
       const defaultLabels = {};
       choices.forEach((c) => {
         defaultLabels[c.value] = c.label;
       });
-      const defaultServers = getDefaultDnsServers(newType);
+      targetServers.forEach((srv) => {
+        if (!defaultLabels[srv]) {
+          defaultLabels[srv] = srv;
+        }
+      });
+
       widget.choices = defaultLabels;
       refreshOptionChoices(
         settingsDnsDynamicState.option || dnsOption,
@@ -361,8 +385,9 @@ function createSettingsContent(section, capabilities) {
         choices.map((c) => c.value),
         defaultLabels,
       );
-      widget.setValue(defaultServers);
+      widget.setValue(targetServers);
     }
+    settingsDnsDynamicState.dnsType = newType;
 
     const refreshers = settingsDnsDynamicState.refreshers.get(section_id);
     if (refreshers) {

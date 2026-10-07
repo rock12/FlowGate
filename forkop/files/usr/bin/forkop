@@ -9,7 +9,7 @@ function as_string(value) {
 const CONFIG_NAME = getenv("FORKOP_CONFIG_NAME") || "forkop";
 const LIB_DIR = getenv("FORKOP_LIB") || "/usr/lib/forkop";
 const BIN_PATH = getenv("FORKOP_BIN") || "/usr/bin/forkop";
-const SERVICE_INIT = getenv("FORKOP_SERVICE_INIT") || "/etc/init.d/forkop";
+const SERVICE_INIT = getenv("FORKOP_SERVICE_INIT") || "/etc/init.d/flowgate";
 
 function shell_quote(value) {
     return "'" + replace(as_string(value), /'/g, "'\\''") + "'";

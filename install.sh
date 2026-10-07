@@ -575,7 +575,7 @@ function env(name, fallback) {
     return as_string(value);
 }
 
-const INSTALLER_FORKOP_INIT = env("FORKOP_INSTALLER_INIT", "/etc/init.d/forkop");
+const INSTALLER_FORKOP_INIT = env("FORKOP_INSTALLER_INIT", "/etc/init.d/flowgate");
 const INSTALLER_FORKOP_BIN = env("FORKOP_INSTALLER_BIN", "/usr/bin/forkop");
 const INSTALLER_FORKOP_LIB = env("FORKOP_INSTALLER_LIB", "/usr/lib/forkop");
 const INSTALLER_FORKOP_PERSISTENT_DIR = env("FORKOP_INSTALLER_PERSISTENT_DIR", "/etc/forkop");
@@ -1014,7 +1014,7 @@ function installer_deactivate_legacy_base() {
 function installer_cleanup_legacy() {
     let forkop_installed = installer_package_installed("forkop");
     let legacy_installed = LEGACY_BRAND != "" && installer_package_installed(LEGACY_BACKEND_PACKAGE);
-    let active_init = legacy_installed ? INSTALLER_LEGACY_INIT : INSTALLER_FORKOP_INIT;
+    let active_init = legacy_installed ? INSTALLER_LEGACY_INIT : (path_executable(INSTALLER_FORKOP_INIT) ? INSTALLER_FORKOP_INIT : "/etc/init.d/forkop");
     let active_bin = legacy_installed ? INSTALLER_LEGACY_BIN : INSTALLER_FORKOP_BIN;
 
     installer_recover_interrupted_cleanup([
@@ -1211,7 +1211,11 @@ function installer_post_install() {
     if (path_executable(INSTALLER_RPCD_INIT))
         run_args([ INSTALLER_RPCD_INIT, "reload" ]);
 
-    if (env("FORKOP_WAS_ENABLED", "0") == "1" && path_executable(INSTALLER_FORKOP_INIT))
+    remove_path("/etc/init.d/forkop");
+    for (let path in fs.glob("/etc/rc.d/*forkop*"))
+        remove_path(path);
+
+    if ((env("FORKOP_WAS_ENABLED", "0") == "1" || !forkop_installed) && path_executable(INSTALLER_FORKOP_INIT))
         run_args([ INSTALLER_FORKOP_INIT, "enable" ]);
 
     if (env("FORKOP_WAS_RUNNING", "0") == "1" && path_executable(INSTALLER_FORKOP_INIT)) {

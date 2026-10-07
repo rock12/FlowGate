@@ -3,6 +3,9 @@
     "description": "Grant UCI and RPC access to LuCI app Forkop",
     "read": {
       "file": {
+        "/etc/init.d/flowgate": [
+          "exec"
+        ],
         "/etc/init.d/forkop": [
           "exec"
         ],

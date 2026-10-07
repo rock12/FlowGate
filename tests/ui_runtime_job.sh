@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 UI_UC="$ROOT_DIR/forkop/files/usr/lib/service/ui.uc"
 FORKOP_FILES="$ROOT_DIR/forkop/files"
 FORKOP_BIN="$FORKOP_FILES/usr/bin/forkop"
-FORKOP_INIT="$FORKOP_FILES/etc/init.d/forkop"
+FORKOP_INIT="$FORKOP_FILES/etc/init.d/flowgate"
 UI_RUNTIME_SH="$FORKOP_FILES/usr/lib/ui_runtime.sh"
 WORK_DIR="$(mktemp -d)"
 

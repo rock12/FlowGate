@@ -20,8 +20,8 @@ function constants_map() {
     c.FORKOP_CONFIG_NAME = env("FORKOP_CONFIG_NAME", "forkop");
     c.FORKOP_CONFIG = env("FORKOP_CONFIG", "/etc/config/" + c.FORKOP_CONFIG_NAME);
     c.FORKOP_BIN = env("FORKOP_BIN", "/usr/bin/forkop");
-    c.FORKOP_SERVICE_NAME = env("FORKOP_SERVICE_NAME", "forkop");
-    c.FORKOP_SERVICE_INIT = env("FORKOP_SERVICE_INIT", "/etc/init.d/forkop");
+    c.FORKOP_SERVICE_NAME = env("FORKOP_SERVICE_NAME", "flowgate");
+    c.FORKOP_SERVICE_INIT = env("FORKOP_SERVICE_INIT", "/etc/init.d/flowgate");
     c.FORKOP_RELEASE_REPO = env("FORKOP_RELEASE_REPO", "rock12/flowgate");
     c.FORKOP_LUCI_VIEW_NAMESPACE = env("FORKOP_LUCI_VIEW_NAMESPACE", "forkop");
     c.FORKOP_LUCI_VIEW_DIR = env("FORKOP_LUCI_VIEW_DIR", "/www/luci-static/resources/view/" + c.FORKOP_LUCI_VIEW_NAMESPACE);

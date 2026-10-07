@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FORKOP_FILES="$ROOT_DIR/forkop/files"
 FORKOP_BIN="$FORKOP_FILES/usr/bin/forkop"
 FORKOP_LIB="$FORKOP_FILES/usr/lib"
-FORKOP_INIT="$FORKOP_FILES/etc/init.d/forkop"
+FORKOP_INIT="$FORKOP_FILES/etc/init.d/flowgate"
 LUCI_ROOT="$ROOT_DIR/luci-app-forkop/root"
 LUCI_UCI_DEFAULTS="$LUCI_ROOT/etc/uci-defaults/50_luci-forkop"
 
@@ -44,7 +44,7 @@ shell_scripts="$(
 expected_shell_scripts="$(
   printf '%s\n' \
     'luci-app-forkop/root/etc/uci-defaults/50_luci-forkop' \
-    'forkop/files/etc/init.d/forkop' |
+    'forkop/files/etc/init.d/flowgate' |
     LC_ALL=C sort
 )"
 

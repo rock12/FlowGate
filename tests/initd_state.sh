@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FORKOP_LIB="$ROOT_DIR/forkop/files/usr/lib"
 INITD_UC="$FORKOP_LIB/service/initd.uc"
 STATE_UC="$FORKOP_LIB/service/state.uc"
-INITD="$ROOT_DIR/forkop/files/etc/init.d/forkop"
+INITD="$ROOT_DIR/forkop/files/etc/init.d/flowgate"
 WORK_DIR="$(mktemp -d)"
 
 cleanup() {

@@ -2803,12 +2803,12 @@ var ForkopShellMethods = {
   enable: async () => callBaseMethod(
     Forkop.AvailableMethods.ENABLE,
     [],
-    "/etc/init.d/forkop"
+    "/etc/init.d/flowgate"
   ),
   disable: async () => callBaseMethod(
     Forkop.AvailableMethods.DISABLE,
     [],
-    "/etc/init.d/forkop"
+    "/etc/init.d/flowgate"
   ),
   globalCheck: async (masked = true) => callBaseMethod(Forkop.AvailableMethods.GLOBAL_CHECK, [
     masked ? "masked" : "raw"

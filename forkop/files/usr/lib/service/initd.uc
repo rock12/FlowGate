@@ -16,8 +16,8 @@ function constant_value(name, fallback) {
 const CONFIG_NAME = getenv("FORKOP_CONFIG_NAME") || constant_value("FORKOP_CONFIG_NAME", "forkop");
 const LIB_DIR = getenv("FORKOP_LIB") || "/usr/lib/forkop";
 const BIN_PATH = getenv("FORKOP_BIN") || constant_value("FORKOP_BIN", "/usr/bin/forkop");
-const SERVICE_INIT = getenv("FORKOP_SERVICE_INIT") || constant_value("FORKOP_SERVICE_INIT", "/etc/init.d/forkop");
-const SERVICE_NAME = getenv("FORKOP_SERVICE_NAME") || constant_value("FORKOP_SERVICE_NAME", "forkop");
+const SERVICE_INIT = getenv("FORKOP_SERVICE_INIT") || constant_value("FORKOP_SERVICE_INIT", "/etc/init.d/flowgate");
+const SERVICE_NAME = getenv("FORKOP_SERVICE_NAME") || constant_value("FORKOP_SERVICE_NAME", "flowgate");
 const CONFIG_FILE = getenv("FORKOP_CONFIG_FILE") || "/etc/config/" + CONFIG_NAME;
 const RELOAD_LOCK_DIR = getenv("FORKOP_RELOAD_LOCK_DIR") || "/var/run/forkop.reload.lock";
 const RUNTIME_STATE_DIR = getenv("FORKOP_RUNTIME_STATE_DIR") || "/var/run/forkop";
@@ -448,7 +448,9 @@ function status_service() {
 }
 
 function service_is_enabled() {
-    return file_exists("/etc/rc.d/S99" + SERVICE_NAME);
+    return file_exists("/etc/rc.d/S99flowgate") ||
+        file_exists("/etc/rc.d/S99" + SERVICE_NAME) ||
+        file_exists("/etc/rc.d/S99forkop");
 }
 
 function retry_start_on_wan_up_action(runtime_running_value, service_enabled_value, retry_pending_value) {

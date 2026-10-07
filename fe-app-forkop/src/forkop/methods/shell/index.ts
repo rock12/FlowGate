@@ -315,13 +315,13 @@ export const ForkopShellMethods = {
     callBaseMethod<unknown>(
       Forkop.AvailableMethods.ENABLE,
       [],
-      '/etc/init.d/forkop',
+      '/etc/init.d/flowgate',
     ),
   disable: async () =>
     callBaseMethod<unknown>(
       Forkop.AvailableMethods.DISABLE,
       [],
-      '/etc/init.d/forkop',
+      '/etc/init.d/flowgate',
     ),
   globalCheck: async (masked = true) =>
     callBaseMethod<unknown>(Forkop.AvailableMethods.GLOBAL_CHECK, [

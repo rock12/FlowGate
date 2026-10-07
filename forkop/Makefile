@@ -62,7 +62,7 @@ endef
 
 define Package/forkop/install
 	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./files/etc/init.d/forkop $(1)/etc/init.d/forkop
+	$(INSTALL_BIN) ./files/etc/init.d/flowgate $(1)/etc/init.d/flowgate
 
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) ./files/etc/config/forkop $(1)/etc/config/forkop

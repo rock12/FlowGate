@@ -461,6 +461,9 @@ msgstr "DNS через HTTPS (DoH)"
 msgid "DNS over TLS (DoT)"
 msgstr "DNS через TLS (DoT)"
 
+msgid "DNS over QUIC (DoQ)"
+msgstr "DNS через QUIC (DoQ)"
+
 msgid "DNS protocol"
 msgstr "Протокол DNS"
 
@@ -721,6 +724,27 @@ msgstr "FakeTLS-хост"
 
 msgid "Fallback on unknown DC"
 msgstr "Fallback для неизвестного DC"
+
+msgid "Fallback DNS Servers"
+msgstr "Резервные DNS-серверы"
+
+msgid "Plain-UDP DNS servers used as a last resort when all primary DNS fail. These are always unencrypted (no DoH/DoT). Example: 1.1.1.1, 8.8.8.8. Unlike the ISP fallback toggle, these are your own chosen servers."
+msgstr "Обычные UDP DNS-серверы, используемые в крайнем случае при сбое всех основных DNS. Всегда без шифрования (без DoH/DoT). Пример: 1.1.1.1, 8.8.8.8. В отличие от переключателя резервирования через провайдера, это выбранные вами серверы."
+
+msgid "Fallback DNS servers must be plain UDP (IP or hostname). DoH/DoT URLs are not allowed here."
+msgstr "Резервные DNS-серверы должны использовать обычный UDP (IP или имя хоста). URL-адреса DoH/DoT здесь не допускаются."
+
+msgid "Enable WAN DNS Fallback for Main DNS"
+msgstr "Включить резервный WAN DNS для основных DNS"
+
+msgid "Enable WAN DNS Fallback for Bootstrap DNS"
+msgstr "Включить резервный WAN DNS для Bootstrap DNS"
+
+msgid "⚠️ If all Main DNS fail 3 times, queries will be sent to your ISP's DNS in plaintext. Only use as a last resort to prevent complete internet loss."
+msgstr "⚠️ Если все основные DNS не ответят 3 раза подряд, запросы будут отправлены на DNS провайдера в открытом виде. Используйте только как крайнюю меру во избежание полной потери интернета."
+
+msgid "⚠️ If all Bootstrap DNS fail 3 times, queries will be sent to your ISP's DNS in plaintext. Only use as a last resort to prevent complete internet loss."
+msgstr "⚠️ Если все Bootstrap DNS не ответят 3 раза подряд, запросы будут отправлены на DNS провайдера в открытом виде. Используйте только как крайнюю меру во избежание полной потери интернета."
 
 msgid "Faster server search interval"
 msgstr "Интервал поиска более быстрого сервера"

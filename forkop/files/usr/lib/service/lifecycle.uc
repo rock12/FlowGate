@@ -17,8 +17,8 @@ const CONFIG_NAME = getenv("FORKOP_CONFIG_NAME") || constant_value("FORKOP_CONFI
 const CONFIG_FILE = getenv("FORKOP_CONFIG_FILE") || "/etc/config/" + CONFIG_NAME;
 const LIB_DIR = getenv("FORKOP_LIB") || "/usr/lib/forkop";
 const BIN_PATH = getenv("FORKOP_BIN") || constant_value("FORKOP_BIN", "/usr/bin/forkop");
-const SERVICE_INIT = getenv("FORKOP_SERVICE_INIT") || constant_value("FORKOP_SERVICE_INIT", "/etc/init.d/forkop");
-const SERVICE_NAME = getenv("FORKOP_SERVICE_NAME") || constant_value("FORKOP_SERVICE_NAME", "forkop");
+const SERVICE_INIT = getenv("FORKOP_SERVICE_INIT") || constant_value("FORKOP_SERVICE_INIT", "/etc/init.d/flowgate");
+const SERVICE_NAME = getenv("FORKOP_SERVICE_NAME") || constant_value("FORKOP_SERVICE_NAME", "flowgate");
 const LUCI_VIEW_DIR = getenv("FORKOP_LUCI_VIEW_DIR") || constant_value("FORKOP_LUCI_VIEW_DIR", "/www/luci-static/resources/view/forkop");
 const LUCI_I18N_DOMAIN = getenv("FORKOP_LUCI_I18N_DOMAIN") || constant_value("FORKOP_LUCI_I18N_DOMAIN", "forkop");
 

@@ -3,7 +3,7 @@ set -eo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FORKOP_BIN="$ROOT_DIR/forkop/files/usr/bin/forkop"
-FORKOP_INIT="$ROOT_DIR/forkop/files/etc/init.d/forkop"
+FORKOP_INIT="$ROOT_DIR/forkop/files/etc/init.d/flowgate"
 CLI_UC="$FORKOP_BIN"
 RUNTIME_STATE="$ROOT_DIR/forkop/files/usr/lib/runtime_state.sh"
 UPDATES_RUNTIME="$ROOT_DIR/forkop/files/usr/lib/updates_runtime.sh"

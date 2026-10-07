@@ -169,8 +169,7 @@ build_backend_root() {
   make_dir "$output_root/usr/bin"
   make_dir "$output_root/usr/lib/forkop"
 
-  install -m 0755 "$ROOT_DIR/forkop/files/etc/init.d/forkop" "$output_root/etc/init.d/forkop"
-  ln -sf forkop "$output_root/etc/init.d/flowgate"
+  install -m 0755 "$ROOT_DIR/forkop/files/etc/init.d/flowgate" "$output_root/etc/init.d/flowgate"
   install -m 0644 "$ROOT_DIR/forkop/files/etc/config/forkop" "$output_root/etc/config/forkop"
   ln -sf forkop "$output_root/etc/config/flowgate"
   install -m 0755 "$ROOT_DIR/forkop/files/usr/bin/forkop" "$output_root/usr/bin/forkop"
@@ -181,7 +180,7 @@ build_backend_root() {
     "$output_root/usr/lib/forkop/core/constants.uc"
 
   normalize_package_root_modes "$output_root"
-  chmod 0755 "$output_root/etc/init.d/forkop" "$output_root/usr/bin/forkop"
+  chmod 0755 "$output_root/etc/init.d/flowgate" "$output_root/usr/bin/forkop"
 }
 
 build_app_root() {
