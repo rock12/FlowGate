@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+shopt -s inherit_errexit 2>/dev/null || true
+
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -89,7 +91,13 @@ download_sdk_archive() {
   mkdir -p "$SDK_CACHE_DIR"
   if [[ ! -f "$archive_path" ]]; then
     echo "Downloading SDK: $url" >&2
-    curl --fail --location --retry 3 --output "$archive_path.part" "$url"
+    rm -f "$archive_path.part"
+    if ! curl --fail --location --http1.1 --retry 5 --retry-all-errors --retry-delay 3 \
+              --output "$archive_path.part" "$url"; then
+      echo "Failed to download SDK from $url" >&2
+      rm -f "$archive_path.part"
+      exit 1
+    fi
     mv "$archive_path.part" "$archive_path"
   fi
 
@@ -114,8 +122,18 @@ extract_sdk() {
   rm -rf "$destination"
   temp_dir="$(mktemp -d "$SDK_DIR/.${kind}.XXXXXX")"
   trap 'rm -rf -- "$temp_dir"' EXIT
-  tar --zstd -xf "$archive_path" -C "$temp_dir"
+  if ! tar --zstd -xf "$archive_path" -C "$temp_dir"; then
+    echo "Corrupted SDK archive $archive_path, removing..." >&2
+    rm -f "$archive_path"
+    rm -rf "$temp_dir"
+    exit 1
+  fi
   extracted_root="$(find "$temp_dir" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+  if [[ -z "$extracted_root" || ! -d "$extracted_root" ]]; then
+    echo "Failed to find extracted root directory in $temp_dir" >&2
+    rm -rf "$temp_dir"
+    exit 1
+  fi
   mv "$extracted_root" "$destination"
   printf '%s\n' "$sdk_url" > "$marker_file"
   rmdir "$temp_dir" 2>/dev/null || true
