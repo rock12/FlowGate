@@ -2541,6 +2541,7 @@ var Forkop;
     AvailableMethods2["COMPONENT_ACTION_ASYNC"] = "component_action_async";
     AvailableMethods2["COMPONENT_ACTION_STATUS"] = "component_action_status";
     AvailableMethods2["COMPONENT_UPDATE_CHECK_CACHE"] = "component_update_check_cache";
+    AvailableMethods2["COMPONENT_LIST_RELEASES"] = "component_list_releases";
     AvailableMethods2["SUBSCRIPTION_UPDATE_ASYNC"] = "subscription_update_async";
     AvailableMethods2["SUBSCRIPTION_UPDATE_STATUS"] = "subscription_update_status";
   })(AvailableMethods = Forkop2.AvailableMethods || (Forkop2.AvailableMethods = {}));
@@ -2608,6 +2609,32 @@ function parseJsonObjectOutput(output) {
     }
     try {
       return JSON.parse(jsonMatch[1]);
+    } catch (_jsonError) {
+      return null;
+    }
+  }
+}
+function parseJsonArrayOutput(output) {
+  if (!output) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(output);
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+    return null;
+  } catch (_error) {
+    const jsonMatch = output.match(/(\[[\s\S]*\])\s*$/);
+    if (!jsonMatch) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(jsonMatch[1]);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+      return null;
     } catch (_jsonError) {
       return null;
     }
@@ -2972,10 +2999,14 @@ var ForkopShellMethods = {
       data: parsedResponse
     };
   },
-  componentActionStart: async (component, action) => {
+  componentActionStart: async (component, action, extra) => {
+    const args = [Forkop.AvailableMethods.COMPONENT_ACTION_ASYNC, component, action];
+    if (extra) {
+      args.push(extra);
+    }
     const response = await executeShellCommand({
       command: "/usr/bin/forkop",
-      args: [Forkop.AvailableMethods.COMPONENT_ACTION_ASYNC, component, action],
+      args,
       timeout: COMPONENT_ACTION_RPC_TIMEOUT_MS
     });
     const parsedResponse = parseComponentActionStartResult(response);
@@ -3005,6 +3036,30 @@ var ForkopShellMethods = {
   componentUpdateCheckCache: async () => callBaseMethod(
     Forkop.AvailableMethods.COMPONENT_UPDATE_CHECK_CACHE
   ),
+  componentListReleases: async (component, count = 5) => {
+    const response = await executeShellCommand({
+      command: "/usr/bin/forkop",
+      args: [
+        Forkop.AvailableMethods.COMPONENT_LIST_RELEASES,
+        component,
+        String(count)
+      ],
+      timeout: 25e3
+    });
+    const parsed = parseJsonArrayOutput(
+      response.stdout
+    );
+    if ((response.code ?? 0) !== 0 || !parsed) {
+      return {
+        success: false,
+        error: response.stderr || _("Failed to list releases")
+      };
+    }
+    return {
+      success: true,
+      data: parsed
+    };
+  },
   waitComponentActionJob: async (jobId, component, action, expectedLatestVersion) => {
     let selfUpdateVersionMatchedAt = 0;
     let lastStatusRefreshAt = 0;
@@ -4770,8 +4825,10 @@ var LogNotificationDeduper = class {
 var componentActionKeyMap = {
   "forkop:check_update": "forkopCheck",
   "forkop:install": "forkopInstall",
+  "forkop:install_version": "forkopInstall",
   "sing_box:check_update": "singBoxCheck",
   "sing_box:install": "singBoxInstall",
+  "sing_box:install_version": "singBoxInstall",
   "sing_box:install_extended": "singBoxInstallExtended",
   "sing_box:install_extended_compressed": "singBoxInstallExtendedCompressed",
   "sing_box:install_tiny": "singBoxInstallTiny",
@@ -13354,7 +13411,8 @@ async function handleComponentAction(button) {
   try {
     const startResponse = await ForkopShellMethods.componentActionStart(
       button.component,
-      button.action
+      button.action,
+      button.targetVersion
     );
     if (!startResponse.success) {
       if (isComponentActionAlreadyRunningError(startResponse.error)) {
@@ -13550,7 +13608,8 @@ function getComponentCards() {
       version: systemInfoLoading ? _("Loading...") : formatSingBoxVersion(systemInfo),
       latestVersion: getLatestVersion("sing_box"),
       releaseUrl: getGitHubReleaseUrl("sing_box"),
-      actions: singBoxActions
+      actions: singBoxActions,
+      supportsVersions: !singBoxStable && !singBoxTiny
     },
     {
       component: "zapret",
@@ -13580,6 +13639,141 @@ function getComponentCards() {
       actions: byedpiActions
     }
   ];
+}
+var activeVersionPickerComponent = null;
+var versionPickerLoading = false;
+var versionPickerError = null;
+var versionPickerReleases = [];
+var versionPickerReleasesCache = {};
+
+async function toggleVersionPicker(component) {
+  if (activeVersionPickerComponent === component) {
+    activeVersionPickerComponent = null;
+    versionPickerLoading = false;
+    versionPickerError = null;
+    renderUpdatesComponents();
+    return;
+  }
+
+  activeVersionPickerComponent = component;
+  versionPickerError = null;
+
+  if (versionPickerReleasesCache[component]) {
+    versionPickerReleases = versionPickerReleasesCache[component];
+    versionPickerLoading = false;
+    renderUpdatesComponents();
+    return;
+  }
+
+  versionPickerLoading = true;
+  versionPickerReleases = [];
+  renderUpdatesComponents();
+
+  try {
+    const response = await ForkopShellMethods.componentListReleases(
+      component,
+      5
+    );
+
+    if (activeVersionPickerComponent !== component) {
+      return;
+    }
+
+    if (!response.success) {
+      versionPickerError = response.error || _("No versions found");
+      versionPickerReleases = [];
+    } else if (!response.data || response.data.length === 0) {
+      versionPickerError = _("No versions found");
+      versionPickerReleases = [];
+    } else {
+      versionPickerReleases = response.data;
+      versionPickerReleasesCache[component] = response.data;
+      versionPickerError = null;
+    }
+  } catch (_error) {
+    if (activeVersionPickerComponent !== component) {
+      return;
+    }
+    versionPickerError = _("Failed to load versions");
+    versionPickerReleases = [];
+  } finally {
+    if (activeVersionPickerComponent === component) {
+      versionPickerLoading = false;
+      renderUpdatesComponents();
+    }
+  }
+}
+
+async function handleInstallVersion(component, tag) {
+  activeVersionPickerComponent = null;
+  renderUpdatesComponents();
+
+  const button = {
+    key: "singBoxInstall",
+    text: _("Install"),
+    icon: renderDownloadIcon24,
+    component,
+    action: "install_version",
+    targetVersion: tag
+  };
+  await handleComponentAction(button);
+}
+
+function renderVersionPickerDropdown(component) {
+  const container = E("div", { class: "fkp-version-picker" });
+
+  if (versionPickerLoading) {
+    container.appendChild(
+      E(
+        "div",
+        { class: "fkp-version-picker__loading" },
+        _("Loading versions...")
+      )
+    );
+    return container;
+  }
+
+  if (versionPickerError) {
+    container.appendChild(
+      E("div", { class: "fkp-version-picker__error" }, versionPickerError)
+    );
+    return container;
+  }
+
+  const list = E("div", { class: "fkp-version-picker__list" });
+  for (const release of versionPickerReleases) {
+    const children = [
+      E("span", { class: "fkp-version-picker__tag" }, release.tag)
+    ];
+    if (release.published) {
+      children.push(
+        E("span", { class: "fkp-version-picker__date" }, release.published)
+      );
+    }
+    if (release.prerelease) {
+      children.push(
+        E(
+          "span",
+          { class: "fkp-version-picker__prerelease" },
+          _("pre-release")
+        )
+      );
+    }
+    children.push(
+      renderButton({
+        text: _("Install"),
+        loading: false,
+        disabled: isAnyActionLoading(),
+        onClick: () => void handleInstallVersion(component, release.tag)
+      })
+    );
+    list.appendChild(
+      E("div", { class: "fkp-version-picker__item" }, children)
+    );
+  }
+
+  container.appendChild(list);
+  return container;
 }
 function renderComponentCard(card) {
   const updatesActions = store.get().updatesActions;
@@ -13748,6 +13942,23 @@ function renderComponentCard(card) {
       ])
     );
   }
+  if (card.supportsVersions) {
+    const isPickerOpen = activeVersionPickerComponent === card.component;
+    const versionsButton = renderButton({
+      text: isPickerOpen ? _("Hide versions") : _("Versions"),
+      loading: isPickerOpen && versionPickerLoading,
+      disabled: systemInfoLoading || serviceRuntimeActionLoading || anyActionLoading,
+      onClick: () => void toggleVersionPicker(card.component)
+    });
+    actionElements.push(
+      E("div", { class: "fkp_updates-page__component__versions" }, [
+        versionsButton
+      ])
+    );
+    if (isPickerOpen) {
+      actionElements.push(renderVersionPickerDropdown(card.component));
+    }
+  }
   const actionsContainer = E(
     "div",
     {
@@ -13840,6 +14051,7 @@ async function onPageMount4() {
 function onPageUnmount4() {
   updatesMounted = false;
   updatesMountId += 1;
+  activeVersionPickerComponent = null;
   stopComponentActionStateWatcher();
   store.unsubscribe(onStoreUpdate3);
 }
@@ -14033,6 +14245,66 @@ var styles6 = `
     display: flex;
     flex-wrap: nowrap;
     gap: 6px;
+}
+
+.fkp_updates-page__component__versions {
+    margin-top: 6px;
+}
+
+.fkp-version-picker {
+    margin-top: 8px;
+    padding: 8px;
+    border: 1px solid var(--border-color-low, #dee2e6);
+    border-radius: 4px;
+    background: var(--background-color-low, #f8f9fa);
+}
+
+.fkp-version-picker__loading,
+.fkp-version-picker__error {
+    padding: 6px 0;
+    font-size: 12px;
+    color: var(--text-color-medium, #6c757d);
+}
+
+.fkp-version-picker__error {
+    color: var(--color-red-base, #e74c3c);
+}
+
+.fkp-version-picker__list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.fkp-version-picker__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border-color-low, #e9ecef);
+}
+
+.fkp-version-picker__item:last-child {
+    border-bottom: none;
+}
+
+.fkp-version-picker__tag {
+    font-weight: bold;
+    font-size: 13px;
+    color: var(--text-color-high, inherit);
+}
+
+.fkp-version-picker__date {
+    font-size: 11px;
+    color: var(--text-color-medium, #6c757d);
+}
+
+.fkp-version-picker__prerelease {
+    font-size: 10px;
+    color: var(--color-yellow-base, #f39c12);
+    border: 1px solid var(--color-yellow-base, #f39c12);
+    border-radius: 3px;
+    padding: 1px 4px;
 }
 `;
 

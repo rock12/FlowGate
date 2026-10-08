@@ -1739,23 +1739,26 @@ function launch_component_worker(args) {
     return trim(command_output("sh -c " + shell_quote(command)));
 }
 
-function component_action_worker(state_file, output_file, component, action) {
+function component_action_worker(state_file, output_file, component, action, extra) {
     component = normalize_component_name(component);
+    let worker_args = [
+        "ucode",
+        "-L", LIB_DIR,
+        LIB_DIR + "/components/action.uc",
+        "component-action",
+        as_string(component),
+        as_string(action)
+    ];
+    if (extra != null && as_string(extra) != "")
+        push(worker_args, as_string(extra));
     let command = command_env(component_worker_env()) + " " +
-        command_from_args([
-            "ucode",
-            "-L", LIB_DIR,
-            LIB_DIR + "/components/action.uc",
-            "component-action",
-            as_string(component),
-            as_string(action)
-        ]) + " >" + shell_quote(output_file) + " 2>&1";
+        command_from_args(worker_args) + " >" + shell_quote(output_file) + " 2>&1";
     let status = command_status(command);
 
     finish_component_job(state_file, component, action, status, output_file);
 }
 
-function component_action_async(component, action) {
+function component_action_async(component, action, extra) {
     component = normalize_component_name(component);
     if (!ensure_component_runtime_dirs()) {
         component_job_json_response(false, "", "Failed to create component action state directory");
@@ -1777,13 +1780,16 @@ function component_action_async(component, action) {
     }
 
     let output_file = component_job_output_path(job_id);
-    let pid = launch_component_worker([
+    let worker_cmd_args = [
         "component-action-worker",
         state_file,
         output_file,
         as_string(component),
         as_string(action)
-    ]);
+    ];
+    if (extra != null && as_string(extra) != "")
+        push(worker_cmd_args, as_string(extra));
+    let pid = launch_component_worker(worker_cmd_args);
 
     if (pid == "" || !set_component_running_job_pid(state_file, pid)) {
         if (pid != "")
@@ -3012,9 +3018,9 @@ else if (mode == "subscription-update-async")
 else if (mode == "subscription-update-status")
     subscription_update_status(ARGV[1]);
 else if (mode == "component-action-worker")
-    component_action_worker(ARGV[1], ARGV[2], ARGV[3], ARGV[4]);
+    component_action_worker(ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5]);
 else if (mode == "component-action-async")
-    component_action_async(ARGV[1], ARGV[2]);
+    component_action_async(ARGV[1], ARGV[2], ARGV[3]);
 else if (mode == "component-action-status")
     component_action_status(ARGV[1]);
 else if (mode == "component-updates-if-due")

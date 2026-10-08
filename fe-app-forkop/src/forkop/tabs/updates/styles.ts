@@ -159,4 +159,64 @@ export const styles = `
     flex-wrap: nowrap;
     gap: 6px;
 }
+
+.fkp_updates-page__component__versions {
+    margin-top: 6px;
+}
+
+.fkp-version-picker {
+    margin-top: 8px;
+    padding: 8px;
+    border: 1px solid var(--border-color-low, #dee2e6);
+    border-radius: 4px;
+    background: var(--background-color-low, #f8f9fa);
+}
+
+.fkp-version-picker__loading,
+.fkp-version-picker__error {
+    padding: 6px 0;
+    font-size: 12px;
+    color: var(--text-color-medium, #6c757d);
+}
+
+.fkp-version-picker__error {
+    color: var(--color-red-base, #e74c3c);
+}
+
+.fkp-version-picker__list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.fkp-version-picker__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border-color-low, #e9ecef);
+}
+
+.fkp-version-picker__item:last-child {
+    border-bottom: none;
+}
+
+.fkp-version-picker__tag {
+    font-weight: bold;
+    font-size: 13px;
+    color: var(--text-color-high, inherit);
+}
+
+.fkp-version-picker__date {
+    font-size: 11px;
+    color: var(--text-color-medium, #6c757d);
+}
+
+.fkp-version-picker__prerelease {
+    font-size: 10px;
+    color: var(--color-yellow-base, #f39c12);
+    border: 1px solid var(--color-yellow-base, #f39c12);
+    border-radius: 3px;
+    padding: 1px 4px;
+}
 `;

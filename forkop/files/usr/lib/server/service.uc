@@ -684,6 +684,101 @@ function generate_reality_keypair_cli() {
     reality_keypair_response(pair.private_key, pair.public_key);
 }
 
+function generate_wg_keypair_values() {
+    let data = output("sing-box generate wg-keypair 2>/dev/null");
+    let private_key = first_key_value_line_value(data, "PrivateKey");
+    let public_key = first_key_value_line_value(data, "PublicKey");
+
+    if (private_key == null || public_key == null || private_key == "" || public_key == "")
+        return null;
+
+    return {
+        private_key: private_key,
+        public_key: public_key
+    };
+}
+
+function generate_wg_keypair_cli() {
+    let pair = generate_wg_keypair_values();
+    if (pair == null) {
+        error_response("Failed to generate WireGuard key pair");
+        exit(1);
+    }
+
+    print(sprintf("PrivateKey: %s\nPublicKey: %s\n", pair.private_key, pair.public_key));
+}
+
+function generate_awg_params_values() {
+    let srv_pair = generate_wg_keypair_values();
+    let cli_pair = generate_wg_keypair_values();
+    if (srv_pair == null || cli_pair == null)
+        return null;
+
+    let psk = trim(replace(output("sing-box generate rand --base64 32 2>/dev/null"), /\n/g, ""));
+    if (psk == "")
+        psk = trim(replace(output("sing-box generate rand 32 --base64 2>/dev/null"), /\n/g, ""));
+    if (psk == "")
+        psk = trim(replace(output("head -c 32 /dev/urandom | base64 2>/dev/null"), /\n/g, ""));
+
+    // Random safe parameters
+    let r1 = int(trim(replace(output("head -c 2 /dev/urandom | hexdump -e '1/2 \"%u\"' 2>/dev/null"), /\n/g, "")) || "1", 10);
+    let r2 = int(trim(replace(output("head -c 2 /dev/urandom | hexdump -e '1/2 \"%u\"' 2>/dev/null"), /\n/g, "")) || "2", 10);
+    let r3 = int(trim(replace(output("head -c 2 /dev/urandom | hexdump -e '1/2 \"%u\"' 2>/dev/null"), /\n/g, "")) || "3", 10);
+    let r4 = int(trim(replace(output("head -c 2 /dev/urandom | hexdump -e '1/2 \"%u\"' 2>/dev/null"), /\n/g, "")) || "4", 10);
+    let r5 = int(trim(replace(output("head -c 2 /dev/urandom | hexdump -e '1/2 \"%u\"' 2>/dev/null"), /\n/g, "")) || "5", 10);
+
+    let jc = 3 + (r1 % 5);       // 3..7
+    let jmin = 40 + (r2 % 16);   // 40..55
+    let jmax = 70 + (r3 % 41);   // 70..110
+    let s1 = 15 + (r4 % 46);     // 15..60
+    let s2 = 15 + (r5 % 46);     // 15..60
+
+    // 4 distinct positive headers
+    let headers = [];
+    let seed = int(trim(replace(output("head -c 4 /dev/urandom | hexdump -e '1/4 \"%u\"' 2>/dev/null"), /\n/g, "")) || "12345678", 10);
+    for (let i = 0; i < 4; i++) {
+        let h = 100000000 + ((seed + i * 2654435761) % 1900000000);
+        if (h < 5) h = 100000000 + i * 1000;
+        push(headers, h);
+    }
+
+    return {
+        server_private_key: srv_pair.private_key,
+        server_public_key: srv_pair.public_key,
+        client_private_key: cli_pair.private_key,
+        client_public_key: cli_pair.public_key,
+        preshared_key: psk,
+        server_address: "10.0.0.1/24",
+        client_address: "10.0.0.2/32",
+        dns: "10.0.0.1",
+        listen_port: 51820,
+        mtu: 1280,
+        keepalive: 25,
+        awg_version: "2.0",
+        jc: "" + jc,
+        jmin: "" + jmin,
+        jmax: "" + jmax,
+        s1: "" + s1,
+        s2: "" + s2,
+        s3: "0",
+        s4: "0",
+        h1: "" + headers[0],
+        h2: "" + headers[1],
+        h3: "" + headers[2],
+        h4: "" + headers[3]
+    };
+}
+
+function generate_awg_params_cli() {
+    let params = generate_awg_params_values();
+    if (params == null) {
+        error_response("Failed to generate AmneziaWG parameters");
+        exit(1);
+    }
+
+    print(sprintf("%J\n", params));
+}
+
 function write_tls_keypair_data(data, key_path, certificate_path) {
     let key = pem_block(data, "-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----");
     let cert = pem_block(data, "-----BEGIN CERTIFICATE-----", "-----END CERTIFICATE-----");
@@ -1068,6 +1163,10 @@ else if (mode == "prepare-all-defaults")
     prepare_all_server_defaults();
 else if (mode == "generate-reality-keypair")
     generate_reality_keypair_cli();
+else if (mode == "generate-wg-keypair")
+    generate_wg_keypair_cli();
+else if (mode == "generate-awg-params")
+    generate_awg_params_cli();
 else if (mode == "tls-certificate-sha256")
     get_tls_certificate_sha256_cli(ARGV[1]);
 else if (mode == "reality-keypair-response")

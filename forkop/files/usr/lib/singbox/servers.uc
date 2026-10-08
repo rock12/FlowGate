@@ -8,7 +8,10 @@ let option = common.option;
 let list_option = common.list_option;
 let bool_option = common.bool_option;
 let int_option = common.int_option;
+let int_or_range_option = common.int_or_range_option;
+let trim = common.trim;
 let array_or_empty = common.array_or_empty;
+let fs = require("fs");
 
 function safe_filename(value) {
     value = as_string(value);
@@ -92,7 +95,7 @@ function effective_security(section, protocol) {
     }
 
     if (protocol == "shadowsocks" || protocol == "socks" || protocol == "mtproto" ||
-        protocol == "tailscale" || protocol == "json_inbound")
+        protocol == "tailscale" || protocol == "json_inbound" || protocol == "awg" || protocol == "amneziawg")
         return "none";
     if (protocol == "hysteria2")
         return "tls";
@@ -307,6 +310,117 @@ function add_dns_bypass(config, section) {
     });
 }
 
+function add_awg_server_endpoint(config, section, tag_name) {
+    let section_name = section[".name"];
+    let server_address = option(section, "awg_server_address", "10.0.0.1/24");
+    let server_port = int_option(section, "listen_port", 51820);
+    let private_key = option(section, "awg_private_key", "");
+    let peer_public_key = option(section, "awg_peer_public_key", "");
+    let client_address = option(section, "awg_client_address", "10.0.0.2/32");
+    let mtu = int_option(section, "awg_mtu", 1280);
+    let preshared_key = option(section, "awg_preshared_key", "");
+    let keepalive = int_option(section, "awg_keepalive", 25);
+
+    let peer = {
+        public_key: peer_public_key,
+        allowed_ips: [ client_address ]
+    };
+    if (preshared_key != "")
+        peer.pre_shared_key = preshared_key;
+    if (keepalive > 0)
+        peer.persistent_keepalive_interval = keepalive;
+
+    let endpoint = {
+        type: "wireguard",
+        tag: tag_name,
+        listen_port: server_port,
+        address: [ server_address ],
+        private_key: private_key,
+        mtu: mtu,
+        peers: [ peer ]
+    };
+
+    let jc = int_option(section, "awg_jc", 4);
+    if (jc > 10) jc = 10;
+    let jmin = int_option(section, "awg_jmin", 40);
+    let jmax = int_option(section, "awg_jmax", 70);
+    if (jmax > 1200) jmax = 1200;
+
+    let amnezia = {
+        jc: jc,
+        jmin: jmin,
+        jmax: jmax,
+        s1: int_option(section, "awg_s1", 0),
+        s2: int_option(section, "awg_s2", 0),
+        h1: int_or_range_option(section, "awg_h1", 1),
+        h2: int_or_range_option(section, "awg_h2", 2),
+        h3: int_or_range_option(section, "awg_h3", 3),
+        h4: int_or_range_option(section, "awg_h4", 4),
+        s3: int_option(section, "awg_s3", 0),
+        s4: int_option(section, "awg_s4", 0)
+    };
+
+    let sb_variant_file = getenv("SB_VARIANT_STATE_FILE") || "/etc/forkop/sing-box-variant";
+    let sb_version_file = getenv("SB_VERSION_STATE_FILE") || "/etc/forkop/sing-box-version";
+    let sb_version_val = trim(as_string(fs.readfile(sb_version_file) || ""));
+    let sb_variant_val = trim(as_string(fs.readfile(sb_variant_file) || ""));
+    let is_lx = sb_variant_val == "lx" || index(sb_version_val, "-lx") >= 0;
+
+    let awg_ver = option(section, "awg_version", "");
+    if (awg_ver == "") {
+        if (option(section, "awg_rekey_after_time", "") != "" || option(section, "awg_rekey_timeout", "") != "" ||
+            option(section, "awg_reject_after_time", "") != "" || option(section, "awg_keepalive_timeout", "") != "" ||
+            option(section, "awg_max_handshake_attempts", "") != "" ||
+            bool_option(section, "awg_random_trailers", false) || bool_option(section, "awg_disable_cookies", false)) {
+            awg_ver = "3.1";
+        } else if (option(section, "awg_header_protection_key", "") != "" || option(section, "awg_content_padding_addition", "") != "") {
+            awg_ver = "3.0";
+        } else {
+            awg_ver = "2.0";
+        }
+    }
+
+    if (awg_ver == "3.0" || awg_ver == "3.1") {
+        let hpk = option(section, "awg_header_protection_key", "");
+        if (hpk != "") {
+            if (amnezia.s1 < 12) amnezia.s1 = 20;
+            if (amnezia.s2 < 12) amnezia.s2 = 20;
+            if (amnezia.s3 < 12) amnezia.s3 = 20;
+            if (amnezia.s4 < 12) amnezia.s4 = 20;
+            amnezia.header_protection_key = hpk;
+        }
+        let cpa = option(section, "awg_content_padding_addition", "");
+        if (cpa != "") amnezia.content_padding_addition = cpa;
+    }
+
+    if (awg_ver == "3.1") {
+        let rka = option(section, "awg_rekey_after_time", "");
+        if (rka != "") amnezia.rekey_after_time = rka;
+        let rkt = option(section, "awg_rekey_timeout", "");
+        if (rkt != "") amnezia.rekey_timeout = rkt;
+        let rja = option(section, "awg_reject_after_time", "");
+        if (rja != "") amnezia.reject_after_time = rja;
+        let kpt = option(section, "awg_keepalive_timeout", "");
+        if (kpt != "") amnezia.keepalive_timeout = kpt;
+        let mha = option(section, "awg_max_handshake_attempts", "");
+        if (mha != "") amnezia.max_handshake_attempts = mha;
+        if (bool_option(section, "awg_random_trailers", false))
+            amnezia.random_trailers = true;
+        if (bool_option(section, "awg_disable_cookies", false))
+            amnezia.disable_cookies = true;
+    }
+
+    if (is_lx) {
+        for (let k in amnezia)
+            endpoint[k] = amnezia[k];
+    } else {
+        endpoint.amnezia = amnezia;
+    }
+
+    config.endpoints = config.endpoints || [];
+    push(config.endpoints, endpoint);
+}
+
 function add_server(config, section) {
     let section_name = section[".name"];
     let protocol = option(section, "protocol", "vless");
@@ -316,6 +430,8 @@ function add_server(config, section) {
         add_tailscale_endpoint(config, section, tag_name);
     else if (protocol == "json_inbound")
         add_json_inbound(config, section, tag_name);
+    else if (protocol == "awg" || protocol == "amneziawg")
+        add_awg_server_endpoint(config, section, tag_name);
     else
         add_standard_inbound(config, section, protocol, tag_name);
     add_dns_bypass(config, section);

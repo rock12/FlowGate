@@ -2,7 +2,7 @@
 
 let fs = require("fs");
 let common = require("core.common");
-let uci_core = require("core.uci");
+let uci = require("uci");
 let constants = require("core.constants");
 let smart_detect = require("service.smart_detect");
 let smart_plus = require("service.smart_detect_plus");
@@ -31,14 +31,14 @@ function process_running(pid) {
 }
 
 function get_settings() {
-    let c = uci_core.cursor();
+    let c = uci.cursor();
     if (!c) return {};
     c.load(CONFIG_NAME);
     return c.get_all(CONFIG_NAME, "settings") || {};
 }
 
 function get_proxy_sections() {
-    let c = uci_core.cursor();
+    let c = uci.cursor();
     if (!c) return [];
     c.load(CONFIG_NAME);
     let secs = [];
@@ -104,7 +104,7 @@ function get_proxy_port() {
 
 function add_domains_to_section(section_name, domains) {
     if (!section_name || length(domains) == 0) return false;
-    let c = uci_core.cursor();
+    let c = uci.cursor();
     if (!c) return false;
     c.load(CONFIG_NAME);
     let sec = c.get_all(CONFIG_NAME, section_name);
@@ -396,21 +396,6 @@ function worker() {
     }
 }
 
-function start_runtime() {
-    let settings = get_settings();
-    stop_runtime();
-    if (settings.smart_detect != "1") return 0;
-
-    let cmd = common.background_command_with_pid(
-        common.command_from_args([ "ucode", "-L", LIB_DIR, RUNNER_UC, "worker" ]),
-        ">/dev/null 2>&1",
-        ">" + shell_quote(PID_FILE)
-    );
-    system(cmd);
-    log_msg("Smart Detect background service started", "info");
-    return 0;
-}
-
 function stop_runtime() {
     let pid = trim(fs.readfile(PID_FILE) || "");
     if (process_running(pid)) {
@@ -425,6 +410,21 @@ function stop_runtime() {
         }
     }
     fs.unlink(PID_FILE);
+    return 0;
+}
+
+function start_runtime() {
+    let settings = get_settings();
+    stop_runtime();
+    if (settings.smart_detect != "1") return 0;
+
+    let cmd = common.background_command_with_pid(
+        common.command_from_args([ "ucode", "-L", LIB_DIR, RUNNER_UC, "worker" ]),
+        ">/dev/null 2>&1",
+        ">" + shell_quote(PID_FILE)
+    );
+    system(cmd);
+    log_msg("Smart Detect background service started", "info");
     return 0;
 }
 

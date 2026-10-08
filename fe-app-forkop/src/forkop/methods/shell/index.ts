@@ -49,6 +49,33 @@ function parseJsonObjectOutput<T>(output: string): T | null {
   }
 }
 
+function parseJsonArrayOutput<T>(output: string): T[] | null {
+  if (!output) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(output);
+    if (Array.isArray(parsed)) {
+      return parsed as T[];
+    }
+    return null;
+  } catch (_error) {
+    const jsonMatch = output.match(/(\[[\s\S]*\])\s*$/);
+    if (!jsonMatch) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(jsonMatch[1]);
+      if (Array.isArray(parsed)) {
+        return parsed as T[];
+      }
+      return null;
+    } catch (_jsonError) {
+      return null;
+    }
+  }
+}
+
 function parseComponentActionOutput(output: string) {
   return parseJsonObjectOutput<Forkop.ComponentActionResult>(output);
 }
@@ -533,10 +560,15 @@ export const ForkopShellMethods = {
   componentActionStart: async (
     component: Forkop.ComponentName,
     action: Forkop.ComponentAction,
+    extra?: string,
   ) => {
+    const args: string[] = [Forkop.AvailableMethods.COMPONENT_ACTION_ASYNC, component, action];
+    if (extra) {
+      args.push(extra);
+    }
     const response = await executeShellCommand({
       command: '/usr/bin/forkop',
-      args: [Forkop.AvailableMethods.COMPONENT_ACTION_ASYNC, component, action],
+      args,
       timeout: COMPONENT_ACTION_RPC_TIMEOUT_MS,
     });
     const parsedResponse = parseComponentActionStartResult(response);
@@ -575,6 +607,33 @@ export const ForkopShellMethods = {
     callBaseMethod<Forkop.ComponentUpdateCheckCache>(
       Forkop.AvailableMethods.COMPONENT_UPDATE_CHECK_CACHE,
     ),
+  componentListReleases: async (
+    component: Forkop.ComponentName,
+    count: number = 5,
+  ) => {
+    const response = await executeShellCommand({
+      command: '/usr/bin/forkop',
+      args: [
+        Forkop.AvailableMethods.COMPONENT_LIST_RELEASES,
+        component,
+        String(count),
+      ],
+      timeout: 25e3,
+    });
+    const parsed = parseJsonArrayOutput<Forkop.ComponentRelease>(
+      response.stdout,
+    );
+    if ((response.code ?? 0) !== 0 || !parsed) {
+      return {
+        success: false,
+        error: response.stderr || _('Failed to list releases'),
+      } as Forkop.MethodFailureResponse;
+    }
+    return {
+      success: true,
+      data: parsed,
+    } as Forkop.MethodSuccessResponse<Forkop.ComponentRelease[]>;
+  },
   waitComponentActionJob: async (
     jobId: string,
     component: Forkop.ComponentName,

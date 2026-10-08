@@ -87,6 +87,7 @@ export namespace Forkop {
     COMPONENT_ACTION_ASYNC = 'component_action_async',
     COMPONENT_ACTION_STATUS = 'component_action_status',
     COMPONENT_UPDATE_CHECK_CACHE = 'component_update_check_cache',
+    COMPONENT_LIST_RELEASES = 'component_list_releases',
     SUBSCRIPTION_UPDATE_ASYNC = 'subscription_update_async',
     SUBSCRIPTION_UPDATE_STATUS = 'subscription_update_status',
   }
@@ -562,7 +563,14 @@ export namespace Forkop {
     | 'install_extended'
     | 'install_extended_compressed'
     | 'install_tiny'
-    | 'install_stable';
+    | 'install_stable'
+    | 'install_version';
+
+  export interface ComponentRelease {
+    tag: string;
+    published?: string;
+    prerelease?: boolean;
+  }
 
   export interface ComponentActionResult {
     success: boolean;

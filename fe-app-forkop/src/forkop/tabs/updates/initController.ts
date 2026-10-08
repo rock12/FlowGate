@@ -54,6 +54,7 @@ interface ComponentActionButton {
   icon: () => SVGSVGElement;
   component: Forkop.ComponentName;
   action: Forkop.ComponentAction;
+  targetVersion?: string;
 }
 
 interface ComponentCard {
@@ -64,7 +65,16 @@ interface ComponentCard {
   latestVersion?: string;
   releaseUrl?: string;
   actions: ComponentActionButton[];
+  supportsVersions?: boolean;
 }
+
+let activeVersionPickerComponent: Forkop.ComponentName | null = null;
+let versionPickerLoading = false;
+let versionPickerError: string | null = null;
+let versionPickerReleases: Forkop.ComponentRelease[] = [];
+const versionPickerReleasesCache: Partial<
+  Record<Forkop.ComponentName, Forkop.ComponentRelease[]>
+> = {};
 
 let updatesLifecycleRegistered = false;
 let updatesControllerInitialized = false;
@@ -674,6 +684,7 @@ async function handleComponentAction(button: ComponentActionButton) {
     const startResponse = await ForkopShellMethods.componentActionStart(
       button.component,
       button.action,
+      button.targetVersion,
     );
 
     if (!startResponse.success) {
@@ -918,6 +929,7 @@ function getComponentCards(): ComponentCard[] {
       latestVersion: getLatestVersion('sing_box'),
       releaseUrl: getGitHubReleaseUrl('sing_box'),
       actions: singBoxActions,
+      supportsVersions: !singBoxStable && !singBoxTiny,
     },
     {
       component: 'zapret',
@@ -959,6 +971,141 @@ function getComponentCards(): ComponentCard[] {
       actions: byedpiActions,
     },
   ];
+}
+
+async function toggleVersionPicker(component: Forkop.ComponentName) {
+  if (activeVersionPickerComponent === component) {
+    activeVersionPickerComponent = null;
+    versionPickerLoading = false;
+    versionPickerError = null;
+    renderUpdatesComponents();
+    return;
+  }
+
+  activeVersionPickerComponent = component;
+  versionPickerError = null;
+
+  if (versionPickerReleasesCache[component]) {
+    versionPickerReleases = versionPickerReleasesCache[component]!;
+    versionPickerLoading = false;
+    renderUpdatesComponents();
+    return;
+  }
+
+  versionPickerLoading = true;
+  versionPickerReleases = [];
+  renderUpdatesComponents();
+
+  try {
+    const response = await ForkopShellMethods.componentListReleases(
+      component,
+      5,
+    );
+
+    if (activeVersionPickerComponent !== component) {
+      return;
+    }
+
+    if (!response.success) {
+      versionPickerError = response.error || _('No versions found');
+      versionPickerReleases = [];
+    } else if (!response.data || response.data.length === 0) {
+      versionPickerError = _('No versions found');
+      versionPickerReleases = [];
+    } else {
+      versionPickerReleases = response.data;
+      versionPickerReleasesCache[component] = response.data;
+      versionPickerError = null;
+    }
+  } catch (_error) {
+    if (activeVersionPickerComponent !== component) {
+      return;
+    }
+    versionPickerError = _('Failed to load versions');
+    versionPickerReleases = [];
+  } finally {
+    if (activeVersionPickerComponent === component) {
+      versionPickerLoading = false;
+      renderUpdatesComponents();
+    }
+  }
+}
+
+async function handleInstallVersion(
+  component: Forkop.ComponentName,
+  tag: string,
+) {
+  activeVersionPickerComponent = null;
+  renderUpdatesComponents();
+
+  const button: ComponentActionButton = {
+    key: 'singBoxInstall',
+    text: _('Install'),
+    icon: renderDownloadIcon24,
+    component,
+    action: 'install_version',
+    targetVersion: tag,
+  };
+  await handleComponentAction(button);
+}
+
+function renderVersionPickerDropdown(
+  component: Forkop.ComponentName,
+): HTMLElement {
+  const container = E('div', { class: 'fkp-version-picker' });
+
+  if (versionPickerLoading) {
+    container.appendChild(
+      E(
+        'div',
+        { class: 'fkp-version-picker__loading' },
+        _('Loading versions...'),
+      ),
+    );
+    return container;
+  }
+
+  if (versionPickerError) {
+    container.appendChild(
+      E('div', { class: 'fkp-version-picker__error' }, versionPickerError),
+    );
+    return container;
+  }
+
+  const list = E('div', { class: 'fkp-version-picker__list' });
+  for (const release of versionPickerReleases) {
+    const children: Node[] = [
+      E('span', { class: 'fkp-version-picker__tag' }, release.tag),
+    ];
+    if (release.published) {
+      children.push(
+        E('span', { class: 'fkp-version-picker__date' }, release.published),
+      );
+    }
+    if (release.prerelease) {
+      children.push(
+        E(
+          'span',
+          { class: 'fkp-version-picker__prerelease' },
+          _('pre-release'),
+        ),
+      );
+    }
+    children.push(
+      renderButton({
+        text: _('Install'),
+        loading: false,
+        disabled: isAnyActionLoading(),
+        onClick: () => void handleInstallVersion(component, release.tag),
+      }),
+    );
+    list.appendChild(
+      E('div', { class: 'fkp-version-picker__item' }, children),
+    );
+  }
+
+  container.appendChild(list);
+  return container;
 }
 
 function renderComponentCard(card: ComponentCard) {
@@ -1167,6 +1314,27 @@ function renderComponentCard(card: ComponentCard) {
     );
   }
 
+  if (card.supportsVersions) {
+    const isPickerOpen = activeVersionPickerComponent === card.component;
+    const versionsButton = renderButton({
+      text: isPickerOpen ? _('Hide versions') : _('Versions'),
+      loading: isPickerOpen && versionPickerLoading,
+      disabled:
+        systemInfoLoading ||
+        serviceRuntimeActionLoading ||
+        anyActionLoading,
+      onClick: () => void toggleVersionPicker(card.component),
+    });
+    actionElements.push(
+      E('div', { class: 'fkp_updates-page__component__versions' }, [
+        versionsButton,
+      ]),
+    );
+    if (isPickerOpen) {
+      actionElements.push(renderVersionPickerDropdown(card.component));
+    }
+  }
+
   const actionsContainer = E(
     'div',
     {
@@ -1302,6 +1470,7 @@ async function onPageMount() {
 function onPageUnmount() {
   updatesMounted = false;
   updatesMountId += 1;
+  activeVersionPickerComponent = null;
   stopComponentActionStateWatcher();
   store.unsubscribe(onStoreUpdate);
 }
