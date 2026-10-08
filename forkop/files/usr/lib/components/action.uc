@@ -1760,7 +1760,7 @@ function install_sing_box_extended(action, compressed, target_tag) {
 
     remove_file(archive_file);
     stop_forkop_before_sing_box_change();
-    let new_version = validate_sing_box_extended_binary(tmp_binary, tmp_dir, "extended");
+    let new_version = validate_sing_box_extended_binary(tmp_binary, tmp_dir);
     if (new_version == "") {
         remove_file(tmp_binary);
         remove_file(tmp_cronet);

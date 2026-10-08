@@ -2495,3 +2495,45 @@ msgstr "Целевая секция прокси"
 msgid "Select the proxy section where confirmed blocked domains will be automatically added."
 msgstr "Выберите секцию прокси, в которую будут автоматически добавляться подтвержденные заблокированные домены."
 
+msgid "Versions"
+msgstr "Версии"
+
+msgid "Hide versions"
+msgstr "Скрыть версии"
+
+msgid "Loading versions..."
+msgstr "Загрузка версий..."
+
+msgid "No versions found"
+msgstr "Версии не найдены"
+
+msgid "Failed to load versions"
+msgstr "Не удалось загрузить версии"
+
+msgid "pre-release"
+msgstr "пре-релиз"
+
+msgid "Generate keys & obfuscation"
+msgstr "Сгенерировать ключи и обфускацию"
+
+msgid "Generated WireGuard keypair and AmneziaWG obfuscation parameters."
+msgstr "Ключи WireGuard и параметры обфускации AmneziaWG успешно сгенерированы."
+
+msgid "AmneziaWG Configuration"
+msgstr "Конфигурация AmneziaWG"
+
+msgid "Copy config"
+msgstr "Скопировать конфиг"
+
+msgid "Download .conf"
+msgstr "Скачать .conf"
+
+msgid "Config copied to clipboard"
+msgstr "Конфиг скопирован в буфер обмена"
+
+msgid "Failed to copy config"
+msgstr "Не удалось скопировать конфиг"
+
+msgid "Failed to generate AmneziaWG parameters"
+msgstr "Не удалось сгенерировать параметры AmneziaWG"
+
