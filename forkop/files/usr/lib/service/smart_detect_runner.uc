@@ -63,20 +63,43 @@ function get_target_section(settings, available_sections) {
     return available_sections[0];
 }
 
-function get_proxy_port() {
-    let sb_cfg_data = fs.readfile("/etc/sing-box/config.json");
-    if (sb_cfg_data) {
+let cached_clash_info = null;
+let cached_cfg_mtime = 0;
+
+function get_clash_api_info() {
+    let st = fs.stat("/etc/sing-box/config.json");
+    if (!st) return { port: 9090, secret: "", proxy_port: 4534 };
+    if (cached_clash_info && cached_cfg_mtime == st.mtime)
+        return cached_clash_info;
+    let data = fs.readfile("/etc/sing-box/config.json");
+    let info = { port: 9090, secret: "", proxy_port: 4534 };
+    if (data) {
         try {
-            let sb_cfg = json(sb_cfg_data);
-            if (sb_cfg.inbounds) {
+            let sb_cfg = json(data);
+            if (sb_cfg?.experimental?.clash_api) {
+                let api = sb_cfg.experimental.clash_api;
+                info.secret = as_string(api.secret || "");
+                let ext = as_string(api.external_controller || "");
+                let m = match(ext, /:([0-9]+)$/);
+                if (m) info.port = int(m[1]);
+            }
+            if (sb_cfg?.inbounds) {
                 for (let inb in sb_cfg.inbounds) {
-                    if (inb.type == "mixed" || inb.type == "http")
-                        return int(inb.listen_port || 4534);
+                    if (inb.type == "mixed" || inb.type == "http") {
+                        info.proxy_port = int(inb.listen_port || 4534);
+                        break;
+                    }
                 }
             }
         } catch (e) {}
     }
-    return 4534;
+    cached_clash_info = info;
+    cached_cfg_mtime = st.mtime;
+    return info;
+}
+
+function get_proxy_port() {
+    return get_clash_api_info().proxy_port;
 }
 
 function add_domains_to_section(section_name, domains) {
@@ -130,17 +153,70 @@ function direct_curl_flags() {
 }
 
 let pending_streaks = {};
+let memory_seen = null;
+let memory_seen_modified = false;
+let last_seen_prune = 0;
+
+function get_seen() {
+    if (memory_seen == null) {
+        memory_seen = common.read_json_file(SEEN_FILE) || {};
+        if (type(memory_seen) != "object") memory_seen = {};
+    }
+    let now = time();
+    if (now - last_seen_prune >= 30) {
+        last_seen_prune = now;
+        for (let d in keys(memory_seen)) {
+            if (memory_seen[d] < now - 86400) {
+                delete memory_seen[d];
+                memory_seen_modified = true;
+            }
+        }
+    }
+    return memory_seen;
+}
+
+function save_seen_if_needed() {
+    if (memory_seen_modified && memory_seen != null) {
+        common.write_json_file(SEEN_FILE, memory_seen);
+        memory_seen_modified = false;
+    }
+}
+
+let memory_plus_seen = null;
+let memory_plus_seen_modified = false;
+let last_plus_seen_prune = 0;
+
+function get_plus_seen() {
+    if (memory_plus_seen == null) {
+        memory_plus_seen = common.read_json_file(PLUS_SEEN_FILE) || {};
+        if (type(memory_plus_seen) != "object") memory_plus_seen = {};
+    }
+    let now = time();
+    if (now - last_plus_seen_prune >= 30) {
+        last_plus_seen_prune = now;
+        for (let d in keys(memory_plus_seen)) {
+            if (memory_plus_seen[d] < now - 300) {
+                delete memory_plus_seen[d];
+                memory_plus_seen_modified = true;
+            }
+        }
+    }
+    return memory_plus_seen;
+}
+
+function save_plus_seen_if_needed() {
+    if (memory_plus_seen_modified && memory_plus_seen != null) {
+        common.write_json_file(PLUS_SEEN_FILE, memory_plus_seen);
+        memory_plus_seen_modified = false;
+    }
+}
 
 function run_default_cycle(settings, target_section, proxy_port) {
     let now = time();
     let exclude_ru = settings.smart_detect_exclude_ru != "0";
     let user_excludes = settings.smart_detect_exclude_domains || [];
 
-    let seen = common.read_json_file(SEEN_FILE) || {};
-    // Clean old seen records (> 24 hours)
-    for (let d in keys(seen)) {
-        if (seen[d] < now - 86400) delete seen[d];
-    }
+    let seen = get_seen();
 
     let log_out = common.command_output_from_args([ "logread", "-l", "120" ]) || "";
     let candidates = {};
@@ -155,6 +231,7 @@ function run_default_cycle(settings, target_section, proxy_port) {
         if (smart_detect.is_protected_domain(host, exclude_ru, user_excludes)) continue;
         candidates[host] = true;
     }
+    log_out = null;
 
     let confirmed_domains = [];
     let proxy_addr = "127.0.0.1:" + proxy_port;
@@ -187,10 +264,13 @@ function run_default_cycle(settings, target_section, proxy_port) {
         }
         if (dec.seen) {
             seen[domain] = now;
+            memory_seen_modified = true;
             delete pending_streaks[domain];
         }
         if (dec.act) {
             push(confirmed_domains, domain);
+            seen[domain] = now;
+            memory_seen_modified = true;
         }
     }
 
@@ -198,7 +278,7 @@ function run_default_cycle(settings, target_section, proxy_port) {
         add_domains_to_section(target_section, confirmed_domains);
     }
 
-    common.write_json_file(SEEN_FILE, seen);
+    save_seen_if_needed();
 }
 
 let plus_tracked_conns = {};
@@ -209,25 +289,32 @@ function run_plus_cycle(settings, target_section, proxy_port) {
     let exclude_ru = settings.smart_detect_exclude_ru != "0";
     let user_excludes = settings.smart_detect_exclude_domains || [];
 
-    let seen = common.read_json_file(PLUS_SEEN_FILE) || {};
-    for (let d in keys(seen)) {
-        if (seen[d] < now - 300) delete seen[d];
-    }
+    let seen = get_plus_seen();
 
-    let secret = settings.yacd_secret_key || "";
-    let clash_cmd = [ "curl", "-s", "--max-time", "3", "http://127.0.0.1:9090/connections" ];
+    let clash_info = get_clash_api_info();
+    let secret = settings.yacd_secret_key || clash_info.secret || "";
+    let clash_cmd = [
+        "curl", "-s", "--connect-timeout", "2", "--max-time", "3",
+        "--max-filesize", "524288",
+        "http://127.0.0.1:" + clash_info.port + "/connections"
+    ];
     if (secret != "") {
         push(clash_cmd, "-H", "Authorization: Bearer " + secret);
     }
 
     let resp = common.command_output_from_args(clash_cmd);
-    if (!resp || resp == "") return;
+    if (!resp || resp == "") {
+        save_plus_seen_if_needed();
+        return;
+    }
 
     let snapshot = null;
-    try { snapshot = json(resp); } catch (e) { return; }
+    try { snapshot = json(resp); } catch (e) { resp = null; return; }
+    resp = null;
     if (type(snapshot?.connections) != "array") return;
 
     let result = smart_plus.stalled_candidates(plus_tracked_conns, snapshot.connections, now, exclude_ru, user_excludes);
+    snapshot = null;
     plus_tracked_conns = result.tracked;
 
     for (let dom in keys(result.domains)) {
@@ -239,7 +326,10 @@ function run_plus_cycle(settings, target_section, proxy_port) {
     }
 
     let ordered = smart_plus.queue_order(plus_pending, keys(plus_pending));
-    if (length(ordered) == 0) return;
+    if (length(ordered) == 0) {
+        save_plus_seen_if_needed();
+        return;
+    }
 
     let target_domain = ordered[0];
     let item = plus_pending[target_domain];
@@ -254,11 +344,13 @@ function run_plus_cycle(settings, target_section, proxy_port) {
             add_domains_to_section(target_section, [ main ]);
         }
         seen[target_domain] = now;
+        memory_plus_seen_modified = true;
     } else if (dec.seen) {
         seen[target_domain] = now;
+        memory_plus_seen_modified = true;
     }
 
-    common.write_json_file(PLUS_SEEN_FILE, seen);
+    save_plus_seen_if_needed();
 }
 
 function run_smart_detect_iteration() {
@@ -299,7 +391,8 @@ function worker() {
             log_msg("Error in smart detect cycle: " + as_string(e), "err");
         }
 
-        sleep(20000);
+        let sleep_duration = (smart_plus.mode(settings) == "plus") ? 12000 : 20000;
+        sleep(sleep_duration);
     }
 }
 

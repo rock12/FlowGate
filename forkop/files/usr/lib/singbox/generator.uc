@@ -3433,21 +3433,34 @@ function add_combined_route_for_section(config, section) {
     add_fully_routed_ips_rules(config, section);
 
     for (let community in connections.community_lists(section)) {
-        let ensured = ensure_community_ruleset(config, section_name, as_string(community));
+        let comm_str = as_string(community);
+        let ensured = ensure_community_ruleset(config, section_name, comm_str);
         push(rule_set_tags, ensured.tag);
         push(dns_rule_set_tags, ensured.tag);
+        if (comm_str == "discord")
+            push(domain, "discord-attachments-uploads-prd.storage.googleapis.com");
     }
     for (let reference in connections.rule_sets(section)) {
-        let ensured = ensure_custom_ruleset(config, as_string(reference));
+        let ref_str = as_string(reference);
+        let ensured = ensure_custom_ruleset(config, ref_str);
+        if (ensured == null)
+            continue;
         push(rule_set_tags, ensured.tag);
-        if (ensured.kind == "domains")
+        if (ensured.kind == "domains" || ref_str == "discord" || ref_str == "community-discord")
             push(dns_rule_set_tags, ensured.tag);
+        if (ref_str == "discord" || ref_str == "community-discord")
+            push(domain, "discord-attachments-uploads-prd.storage.googleapis.com");
     }
     for (let reference in connections.rule_sets_with_subnets(section)) {
-        let ensured = ensure_custom_ruleset(config, as_string(reference));
+        let ref_str = as_string(reference);
+        let ensured = ensure_custom_ruleset(config, ref_str);
+        if (ensured == null)
+            continue;
         push(rule_set_tags, ensured.tag);
-        if (ensured.kind == "domains")
+        if (ensured.kind == "domains" || ref_str == "discord" || ref_str == "community-discord")
             push(dns_rule_set_tags, ensured.tag);
+        if (ref_str == "discord" || ref_str == "community-discord")
+            push(domain, "discord-attachments-uploads-prd.storage.googleapis.com");
     }
     add_domain_ip_list_ruleset(
         config,
