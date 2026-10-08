@@ -2537,3 +2537,447 @@ msgstr "Не удалось скопировать конфиг"
 msgid "Failed to generate AmneziaWG parameters"
 msgstr "Не удалось сгенерировать параметры AmneziaWG"
 
+
+msgid "MTU & Double NAT Optimization"
+msgstr "Оптимизация MTU и Double NAT"
+
+msgid "Detect & Fix MTU"
+msgstr "Определить и исправить MTU"
+
+msgid "Detect optimal MTU, Double NAT, and apply zero-downtime TCP MSS Clamping to prevent network drops."
+msgstr "Определение оптимального MTU, наличия Double NAT и применение TCP MSS Clamping без разрыва сети для предотвращения зависания страниц."
+
+msgid "MTU & Double NAT Detection"
+msgstr "Определение MTU и Double NAT"
+
+msgid "Probing WAN MTU and detecting Double NAT..."
+msgstr "Тестирование WAN MTU и проверка на Double NAT..."
+
+msgid "WAN Interface"
+msgstr "Интерфейс WAN"
+
+msgid "WAN IP"
+msgstr "IP-адрес WAN"
+
+msgid "Unknown"
+msgstr "Неизвестно"
+
+msgid "Double NAT Status"
+msgstr "Статус Double NAT"
+
+msgid "Detected (Private IP or multi-hop gateway)"
+msgstr "Обнаружен (серый IP или шлюз с несколькими переходами)"
+
+msgid "Not detected (Direct Public IP)"
+msgstr "Не обнаружен (прямой белый IP)"
+
+msgid "Detected Link MTU"
+msgstr "Определенный MTU канала"
+
+msgid "Optimal TCP MSS"
+msgstr "Оптимальный TCP MSS"
+
+msgid "Safe AWG / TUN MTU"
+msgstr "Безопасный MTU для AWG / TUN"
+
+msgid "TCP MSS Clamping"
+msgstr "TCP MSS Clamping"
+
+msgid "Active in NFTables (Zero Downtime)"
+msgstr "Активен в NFTables (без разрыва сети)"
+
+msgid "Not active"
+msgstr "Не активен"
+
+msgid "Applying MTU Fix"
+msgstr "Применение фикса MTU"
+
+msgid "Applying TCP MSS Clamping without restarting network..."
+msgstr "Применение TCP MSS Clamping без перезапуска сети..."
+
+msgid "MTU Fix Applied"
+msgstr "Фикс MTU применен"
+
+msgid "Safe MTU and TCP MSS Clamping successfully applied with zero downtime."
+msgstr "Безопасный MTU и TCP MSS Clamping успешно применены без перезапуска сети."
+
+msgid "Apply TCP MSS Clamp & Safe MTU"
+msgstr "Применить TCP MSS Clamp и безопасный MTU"
+
+msgid "MTU & Double NAT Diagnostics"
+msgstr "Диагностика MTU и Double NAT"
+
+msgid "Direct TorrServer traffic (Direct WAN)"
+msgstr "Прямой трафик TorrServer (Direct WAN)"
+
+msgid "Direct local TorrServer traffic directly to WAN bypassing VPN/TPROXY (similar to Tachyon). Requires TorrServer running under cgroup /services/torrserver."
+msgstr "Направлять локальный трафик TorrServer напрямую в WAN в обход VPN/TPROXY (аналогично Tachyon). Требуется запуск TorrServer в cgroup /services/torrserver."
+
+msgid "Add AmneziaWG / WireGuard Outbound"
+msgstr "Добавить подключение AmneziaWG / WireGuard"
+
+msgid "Amnezia Obfuscation Parameters (AWG 1.0, 2.0, 3.1)"
+msgstr "Параметры обфускации Amnezia (AWG 1.0, 2.0, 3.1)"
+
+msgid "AmneziaWG parameters"
+msgstr "Параметры AmneziaWG"
+
+msgid "Automatically generate random WireGuard keys, PSK and Amnezia obfuscation headers"
+msgstr "Автоматически сгенерировать ключи WireGuard, PSK и заголовки обфускации Amnezia"
+
+msgid "Keys and obfuscation parameters generated"
+msgstr "Ключи и параметры обфускации успешно сгенерированы"
+
+msgid "Failed to generate parameters"
+msgstr "Не удалось сгенерировать параметры"
+
+msgid "Protocol version: 2.0 (standard integer headers) or 3.1 (header protection key, padding ranges, advanced timers)"
+msgstr "Версия протокола: 2.0 (стандартные числовые заголовки) или 3.1 (ключ защиты заголовков, диапазоны паддинга, расширенные таймеры)"
+
+msgid "AmneziaWG 3.0 / 3.1 header protection key"
+msgstr "Ключ защиты заголовков AmneziaWG 3.0 / 3.1"
+
+msgid "AmneziaWG 3.0 / 3.1 content padding range, e.g. 38-104"
+msgstr "Диапазон паддинга данных AmneziaWG 3.0 / 3.1, например 38-104"
+
+msgid "AmneziaWG 3.1 header protection key"
+msgstr "Ключ защиты заголовков AmneziaWG 3.1"
+
+msgid "AmneziaWG 3.1 content padding range, e.g. 38-104"
+msgstr "Диапазон паддинга данных AmneziaWG 3.1, например 38-104"
+
+msgid "AmneziaWG 3.1 rekey after time"
+msgstr "Время пересогласования ключа (Rekey after time)"
+
+msgid "AmneziaWG 3.1 rekey timeout"
+msgstr "Таймаут пересогласования ключа (Rekey timeout)"
+
+msgid "AmneziaWG 3.1 reject after time"
+msgstr "Время сброса сессии (Reject after time)"
+
+msgid "AmneziaWG 3.1 keepalive timeout"
+msgstr "Таймаут keepalive (Keepalive timeout)"
+
+msgid "AmneziaWG 3.1 max handshake attempts"
+msgstr "Макс. попыток рукопожатия (Max handshake attempts)"
+
+msgid "AmneziaWG 3.1 random packet trailers"
+msgstr "Случайные хвосты пакетов (Random trailers)"
+
+msgid "AmneziaWG 3.1 disable cookie replies"
+msgstr "Отключение cookie-ответов (Disable cookies)"
+
+msgid "Client Address"
+msgstr "Адрес клиента"
+
+msgid "Client Address(es)"
+msgstr "Адрес(а) клиента"
+
+msgid "Client DNS"
+msgstr "DNS клиента"
+
+msgid "Client Private Key"
+msgstr "Приватный ключ клиента"
+
+msgid "Client Public Key"
+msgstr "Публичный ключ клиента"
+
+msgid "Server Private Key"
+msgstr "Приватный ключ сервера"
+
+msgid "Server Public Key"
+msgstr "Публичный ключ сервера"
+
+msgid "Pre-shared Key (PSK)"
+msgstr "Общий ключ (PSK)"
+
+msgid "Pre-shared Key (Optional)"
+msgstr "Общий ключ (необязательно)"
+
+msgid "Server Endpoint (Host:Port)"
+msgstr "Эндпоинт сервера (Хост:Порт)"
+
+msgid "Init packet junk size (S1)"
+msgstr "Размер мусора в пакете инициализации (S1)"
+
+msgid "Response packet junk size (S2)"
+msgstr "Размер мусора в пакете ответа (S2)"
+
+msgid "Cookie packet junk size (S3)"
+msgstr "Размер мусора в пакете cookie (S3)"
+
+msgid "Transport packet junk size (S4)"
+msgstr "Размер мусора в пакете данных (S4)"
+
+msgid "Init packet header (H1)"
+msgstr "Заголовок пакета инициализации (H1)"
+
+msgid "Response packet header (H2)"
+msgstr "Заголовок пакета ответа (H2)"
+
+msgid "Underload packet header (H3)"
+msgstr "Заголовок пакета cookie (H3)"
+
+msgid "Transport packet header (H4)"
+msgstr "Заголовок пакета данных (H4)"
+
+msgid "Junk packet count (Jc)"
+msgstr "Количество мусорных пакетов (Jc)"
+
+msgid "Number of junk packets before handshake (1-10)"
+msgstr "Количество мусорных пакетов перед рукопожатием (1-10)"
+
+msgid "Junk packet min size (Jmin)"
+msgstr "Мин. размер мусорных пакетов (Jmin)"
+
+msgid "Minimum size of junk packets"
+msgstr "Минимальный размер мусорных пакетов"
+
+msgid "Junk packet max size (Jmax)"
+msgstr "Макс. размер мусорных пакетов (Jmax)"
+
+msgid "Maximum size of junk packets"
+msgstr "Максимальный размер мусорных пакетов"
+
+msgid "Init Packet Magic Header (S1)"
+msgstr "Магический заголовок инициализации (S1)"
+
+msgid "Response Packet Magic Header (S2)"
+msgstr "Магический заголовок ответа (S2)"
+
+msgid "Init Packet Magic Header (S3)"
+msgstr "Магический заголовок cookie (S3)"
+
+msgid "Response Packet Magic Header (S4)"
+msgstr "Магический заголовок данных (S4)"
+
+msgid "Underload Packet Magic Header (H1)"
+msgstr "Магический заголовок H1"
+
+msgid "Underload Packet Magic Header (H2)"
+msgstr "Магический заголовок H2"
+
+msgid "Underload Packet Magic Header (H3)"
+msgstr "Магический заголовок H3"
+
+msgid "Underload Packet Magic Header (H4)"
+msgstr "Магический заголовок H4"
+
+msgid "Init Packet Payload (I1)"
+msgstr "Полезная нагрузка инициализации (I1)"
+
+msgid "Init Packet Payload (I2)"
+msgstr "Полезная нагрузка ответа (I2)"
+
+msgid "Init Packet Payload (I3)"
+msgstr "Полезная нагрузка cookie (I3)"
+
+msgid "Init Packet Payload (I4)"
+msgstr "Полезная нагрузка данных (I4)"
+
+msgid "Init Packet Payload (I5)"
+msgstr "Полезная нагрузка I5"
+
+msgid "Init payload (I1)"
+msgstr "Нагрузка инициализации (I1)"
+
+msgid "Response payload (I2)"
+msgstr "Нагрузка ответа (I2)"
+
+msgid "Payload (I3)"
+msgstr "Нагрузка (I3)"
+
+msgid "Payload (I4)"
+msgstr "Нагрузка (I4)"
+
+msgid "Payload (I5)"
+msgstr "Нагрузка (I5)"
+
+msgid "Junk payload (J1)"
+msgstr "Мусорная нагрузка (J1)"
+
+msgid "Junk payload (J2)"
+msgstr "Мусорная нагрузка (J2)"
+
+msgid "Junk payload (J3)"
+msgstr "Мусорная нагрузка (J3)"
+
+msgid "Init timeout (Itime)"
+msgstr "Таймаут инициализации (Itime)"
+
+msgid "Init handshake timeout"
+msgstr "Таймаут рукопожатия инициализации"
+
+msgid "Junk Max Size (Jmax)"
+msgstr "Макс. размер мусора (Jmax)"
+
+msgid "Junk Min Size (Jmin)"
+msgstr "Мин. размер мусора (Jmin)"
+
+msgid "Junk Packet Count (Jc)"
+msgstr "Кол-во мусорных пакетов (Jc)"
+
+msgid "Junk size for cookie packet"
+msgstr "Размер мусора для пакета cookie"
+
+msgid "Junk size for initiation packet"
+msgstr "Размер мусора для пакета инициализации"
+
+msgid "Junk size for response packet"
+msgstr "Размер мусора для пакета ответа"
+
+msgid "Junk size for transport packet"
+msgstr "Размер мусора для пакета данных"
+
+msgid "Custom header for cookie packet"
+msgstr "Пользовательский заголовок для пакета cookie"
+
+msgid "Custom header for data packet"
+msgstr "Пользовательский заголовок для пакета данных"
+
+msgid "Custom header for handshake initiation"
+msgstr "Пользовательский заголовок для инициализации рукопожатия"
+
+msgid "Custom header for handshake response"
+msgstr "Пользовательский заголовок для ответа рукопожатия"
+
+msgid "Hex or binary junk payload"
+msgstr "Шестнадцатеричная или бинарная мусорная нагрузка"
+
+msgid "Hex or binary payload"
+msgstr "Шестнадцатеричная или бинарная полезная нагрузка"
+
+msgid "Hex or binary payload for init"
+msgstr "Шестнадцатеричная или бинарная нагрузка для инициализации"
+
+msgid "Hex or binary payload for response"
+msgstr "Шестнадцатеричная или бинарная нагрузка для ответа"
+
+msgid "Enter a number or range, e.g. 25 or 25-35"
+msgstr "Введите число или диапазон, например 25 или 25-35"
+
+msgid "Please provide Server Endpoint, Private Key, and Peer Public Key."
+msgstr "Пожалуйста, укажите эндпоинт сервера, приватный ключ и публичный ключ пира."
+
+msgid "Client configuration (.conf)"
+msgstr "Конфигурация клиента (.conf)"
+
+msgid "Configuration Review"
+msgstr "Просмотр конфигурации"
+
+msgid "Supports AmneziaWG (AWG 1.0, 2.0, 3.1) and WireGuard. Upload a .conf file or paste configuration text / vpn:// link below:"
+msgstr "Поддерживает AmneziaWG (AWG 1.0, 2.0, 3.1) и WireGuard. Загрузите файл .conf или вставьте текст конфигурации / ссылку vpn:// ниже:"
+
+msgid "Upload .conf File:"
+msgstr "Загрузить файл .conf:"
+
+msgid "Select a file with .conf extension"
+msgstr "Выберите файл с расширением .conf"
+
+msgid "Or Paste Config / vpn:// Link:"
+msgstr "Или вставьте конфиг / ссылку vpn://:"
+
+msgid "Decode & Fill Form"
+msgstr "Распознать и заполнить"
+
+msgid "Save Outbound"
+msgstr "Сохранить подключение"
+
+msgid "Loaded!"
+msgstr "Загружено!"
+
+msgid "Failed to decompress Amnezia vpn:// link"
+msgstr "Не удалось распаковать ссылку Amnezia vpn://"
+
+msgid "Unrecognized format. Please upload a .conf file, or paste .conf text, or paste a vpn:// link."
+msgstr "Нераспознанный формат. Пожалуйста, загрузите файл .conf, вставьте текст .conf или ссылку vpn://."
+
+msgid "Failed to parse file: "
+msgstr "Не удалось разобрать файл: "
+
+msgid "Parsing error"
+msgstr "Ошибка разбора"
+
+msgid "Read error"
+msgstr "Ошибка чтения"
+
+msgid "Done"
+msgstr "Готово"
+
+msgid "Cancel"
+msgstr "Отмена"
+
+msgid "Tag / Name"
+msgstr "Тег / Имя"
+
+msgid "UDPspeeder Server"
+msgstr "Сервер UDPspeeder"
+
+msgid "Remote VPS server IP address or domain name"
+msgstr "IP-адрес или доменное имя удаленного VPS-сервера"
+
+msgid "Server Target Port (-r on VPS)"
+msgstr "Целевой порт на сервере (-r на VPS)"
+
+msgid "Destination port on server for incoming packets (e.g. WireGuard / OpenVPN server port 51820)"
+msgstr "Порт назначения на сервере для входящих пакетов (например, порт WireGuard / OpenVPN 51820)"
+
+msgid "UDP port where UDPspeeder listens on your VPS"
+msgstr "UDP-порт, который слушает UDPspeeder на вашем VPS"
+
+msgid "Local Router Port"
+msgstr "Локальный порт роутера"
+
+msgid "Local port on 127.0.0.1 where UDPspeeder listens for outgoing traffic"
+msgstr "Локальный порт на 127.0.0.1, который UDPspeeder слушает для исходящего трафика"
+
+msgid "Password / Key (-k)"
+msgstr "Пароль / Ключ (-k)"
+
+msgid "Shared encryption password between router and server"
+msgstr "Общий пароль шифрования между роутером и сервером"
+
+msgid "FEC Ratio (-f)"
+msgstr "Коэффициент FEC (-f)"
+
+msgid "Forward error correction redundancy, e.g. 20:10 (10 redundant packets per 20 data packets)"
+msgstr "Избыточность упреждающей коррекции ошибок, например 20:10 (10 избыточных пакетов на каждые 20 пакетов данных)"
+
+msgid "FEC Mode (--mode)"
+msgstr "Режим FEC (--mode)"
+
+msgid "Mode 0: Normal FEC (Default)"
+msgstr "Режим 0: Обычный FEC (по умолчанию)"
+
+msgid "Mode 1: Aggressive"
+msgstr "Режим 1: Агрессивный"
+
+msgid "Mode 0: Normal FEC packet processing (recommended); Mode 1: Aggressive retransmission"
+msgstr "Режим 0: обычная обработка пакетов FEC (рекомендуется); Режим 1: агрессивная повторная передача"
+
+msgid "MTU (--mtu)"
+msgstr "MTU (--mtu)"
+
+msgid "Network MTU for packets (default 1200)"
+msgstr "Сетевой MTU для пакетов (по умолчанию 1200)"
+
+msgid "Extra Options"
+msgstr "Дополнительные параметры"
+
+msgid "Additional arguments passed to udpspeeder client (e.g. --timeout 8)"
+msgstr "Дополнительные аргументы для клиента udpspeeder (например, --timeout 8)"
+
+msgid "Server hostname or IP address"
+msgstr "Имя хоста или IP-адрес сервера"
+
+msgid "Server port (e.g. 443) or port range (e.g. 10000-20000)"
+msgstr "Порт сервера (например, 443) или диапазон портов (например, 10000-20000)"
+
+msgid "Username configured on the Mieru server"
+msgstr "Имя пользователя, настроенное на сервере Mieru"
+
+msgid "Password configured on the Mieru server"
+msgstr "Пароль, настроенный на сервере Mieru"
+
+msgid "Underlying transport protocol (TCP recommended)"
+msgstr "Базовый транспортный протокол (рекомендуется TCP)"
