@@ -396,7 +396,13 @@ async function followLatencyTestState(state: Forkop.LatencyActionState) {
 
   try {
     if (state.running) {
-      await ForkopShellMethods.waitLatencyTestJob(jobId);
+      await ForkopShellMethods.waitLatencyTestJob(
+        jobId,
+        undefined,
+        (progress) => {
+          setLatencyFetching(sectionName, true, false, progress);
+        },
+      );
     }
 
     await completeLatencyTestJob(jobId, sectionName);
@@ -722,7 +728,13 @@ async function handleTestLatency(
 
     followedLatencyJobs.add(jobId);
     ownsJobFollow = true;
-    await ForkopShellMethods.waitLatencyTestJob(jobId);
+    await ForkopShellMethods.waitLatencyTestJob(
+      jobId,
+      undefined,
+      (progress) => {
+        setLatencyFetching(sectionName, true, true, progress);
+      },
+    );
     await completeLatencyTestJob(jobId, sectionName);
     completed = true;
   } catch (error) {

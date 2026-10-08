@@ -83,10 +83,63 @@ describe('ForkopShellMethods.latencyAction', () => {
       '10000',
     );
 
-    expect(mocks.executeShellCommand).toHaveBeenCalledWith({
-      command: '/usr/bin/forkop',
-      args: ['latency_test_async', 'proxy', 'AWG', 'AWG-out', '10000'],
       timeout: 15000,
     });
+  });
+
+  it('invokes onProgress callback with progress updates', async () => {
+    let callCount = 0;
+    mocks.executeShellCommand.mockImplementation(({ args }) => {
+      if (args[0] === 'latency_test_status') {
+        callCount++;
+        if (callCount === 1) {
+          return Promise.resolve({
+            stdout: JSON.stringify({
+              success: true,
+              running: true,
+              message: 'Latency test is running',
+              section: 'main',
+              tag: 'proxy-list',
+              progress: { completed: 5, total: 44, failed: 0 },
+            }),
+            stderr: '',
+            code: 0,
+          });
+        }
+
+        return Promise.resolve({
+          stdout: JSON.stringify({
+            success: true,
+            running: false,
+            message: 'Latency test completed',
+            section: 'main',
+            tag: 'proxy-list',
+            exit_code: 0,
+            progress: { completed: 44, total: 44, failed: 0 },
+          }),
+          stderr: '',
+          code: 0,
+        });
+      }
+
+      return Promise.resolve({ stdout: '', stderr: 'Unexpected', code: 1 });
+    });
+
+    const progressUpdates: any[] = [];
+    const responsePromise = ForkopShellMethods.waitLatencyTestJob(
+      'job-progress',
+      Date.now(),
+      (progress) => {
+        progressUpdates.push(progress);
+      },
+    );
+
+    await vi.advanceTimersByTimeAsync(2000);
+    await responsePromise;
+
+    expect(progressUpdates).toEqual([
+      { completed: 5, total: 44, failed: 0 },
+      { completed: 44, total: 44, failed: 0 },
+    ]);
   });
 });

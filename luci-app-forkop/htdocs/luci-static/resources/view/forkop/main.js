@@ -2960,7 +2960,7 @@ var ForkopShellMethods = {
       data: parsedResponse
     };
   },
-  waitLatencyTestJob: async (jobId, startedAt = Date.now()) => {
+  waitLatencyTestJob: async (jobId, startedAt = Date.now(), onProgress) => {
     const transientRpc = createTransientRpcGraceTracker(
       UI_ACTION_TRANSIENT_RPC_GRACE_MS
     );
@@ -2974,6 +2974,9 @@ var ForkopShellMethods = {
         return response;
       }
       transientRpc.reset();
+      if (response.data?.progress && onProgress) {
+        onProgress(response.data.progress);
+      }
       if (response.data.running) {
         continue;
       }
@@ -5866,7 +5869,9 @@ async function followLatencyTestState(state) {
   }
   try {
     if (state.running) {
-      await ForkopShellMethods.waitLatencyTestJob(jobId);
+      await ForkopShellMethods.waitLatencyTestJob(jobId, undefined, (progress) => {
+        setLatencyFetching(sectionName, true, false, progress);
+      });
     }
     await completeLatencyTestJob(jobId, sectionName);
   } catch (error) {
@@ -6111,7 +6116,9 @@ async function handleTestLatency(latencyType, sectionName, tag, timeout) {
     }
     followedLatencyJobs.add(jobId);
     ownsJobFollow = true;
-    await ForkopShellMethods.waitLatencyTestJob(jobId);
+    await ForkopShellMethods.waitLatencyTestJob(jobId, undefined, (progress) => {
+      setLatencyFetching(sectionName, true, true, progress);
+    });
     await completeLatencyTestJob(jobId, sectionName);
     completed = true;
   } catch (error) {

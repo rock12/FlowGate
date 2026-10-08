@@ -506,7 +506,11 @@ export const ForkopShellMethods = {
       data: parsedResponse,
     } as Forkop.MethodSuccessResponse<Forkop.LatencyActionState>;
   },
-  waitLatencyTestJob: async (jobId: string, startedAt = Date.now()) => {
+  waitLatencyTestJob: async (
+    jobId: string,
+    startedAt = Date.now(),
+    onProgress?: (progress: Forkop.LatencyActionProgress) => void,
+  ) => {
     const transientRpc = createTransientRpcGraceTracker(
       UI_ACTION_TRANSIENT_RPC_GRACE_MS,
     );
@@ -525,6 +529,11 @@ export const ForkopShellMethods = {
       }
 
       transientRpc.reset();
+
+      if (response.data.progress && onProgress) {
+        onProgress(response.data.progress);
+      }
+
       if (response.data.running) {
         continue;
       }
