@@ -75,8 +75,15 @@ function whitespace_values(value) {
 
 function option_list_values(section, key) {
     let value = type(section) == "object" ? section[key] : null;
-    if (type(value) == "array")
-        return value;
+    if (type(value) == "array") {
+        let result = [];
+        for (let item in value) {
+            item = trim(as_string(item));
+            if (item != "")
+                push(result, item);
+        }
+        return result;
+    }
     return whitespace_values(value);
 }
 
@@ -1257,7 +1264,8 @@ function validate_combined_domain_text_value(value, section) {
 }
 
 function validate_service_value(service, context) {
-    if (community_service_valid(service, context.community_services))
+    service = trim(as_string(service));
+    if (service == "" || community_service_valid(service, context.community_services))
         return;
 
     fail_validation("Invalid service in community lists: " + service + ". Check config and LuCI cache. Aborted.");
