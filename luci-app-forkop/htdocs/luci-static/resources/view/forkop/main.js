@@ -8106,7 +8106,8 @@ async function runNftCheck() {
     throw new Error("Nftables checks failed");
   }
   const data = nftablesChecks.data;
-  const allGood = Boolean(data.table_exist) && Boolean(data.rules_mangle_exist) && Boolean(data.rules_mangle_counters) && Boolean(data.rules_mangle_output_exist) && Boolean(data.rules_mangle_output_counters) && Boolean(data.rules_proxy_exist) && Boolean(data.rules_proxy_counters) && !data.rules_other_mark_exist;
+  const mangleCountersValid = Boolean(data.rules_mangle_counters) || (Boolean(data.rules_mangle_exist) && Boolean(data.rules_mangle_output_counters));
+  const allGood = Boolean(data.table_exist) && Boolean(data.rules_mangle_exist) && mangleCountersValid && Boolean(data.rules_mangle_output_exist) && Boolean(data.rules_mangle_output_counters) && Boolean(data.rules_proxy_exist) && Boolean(data.rules_proxy_counters) && !data.rules_other_mark_exist;
   const atLeastOneGood = Boolean(data.table_exist) || Boolean(data.rules_mangle_exist) || Boolean(data.rules_mangle_counters) || Boolean(data.rules_mangle_output_exist) || Boolean(data.rules_mangle_output_counters) || Boolean(data.rules_proxy_exist) || Boolean(data.rules_proxy_counters) || !data.rules_other_mark_exist;
   const { state, description } = getMeta({ atLeastOneGood, allGood });
   updateCheckStore({
@@ -8127,7 +8128,7 @@ async function runNftCheck() {
         value: ""
       },
       {
-        state: data.rules_mangle_counters ? "success" : "warning",
+        state: mangleCountersValid ? "success" : "warning",
         key: _("Rules mangle counters"),
         value: ""
       },

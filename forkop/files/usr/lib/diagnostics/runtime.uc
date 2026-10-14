@@ -1451,6 +1451,8 @@ function check_nft_rules() {
             rules_proxy_exist = status[0];
             rules_proxy_counters = status[1];
         }
+        if (rules_mangle_counters == 0 && rules_mangle_exist == 1 && rules_mangle_output_counters == 1)
+            rules_mangle_counters = 1;
     }
 
     for (let line in split(command_output_from_args([ "nft", "list", "tables" ]), "\n")) {
